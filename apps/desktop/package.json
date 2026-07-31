@@ -1,0 +1,64 @@
+{
+  "name": "@memora/desktop",
+  "version": "0.1.0-alpha.1",
+  "description": "Local execution evidence for autonomous developer tools",
+  "author": "Memora",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist-main/main.js",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc -p tsconfig.main.json && vite build",
+    "start": "electron .",
+    "test": "vitest run --config vitest.config.ts",
+    "dist:mac": "pnpm build && electron-builder --mac"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.2.6",
+    "@fontsource/ibm-plex-sans": "^5.2.6",
+    "@smritheon/memora-local-cli": "workspace:*",
+    "@smritheon/memora-local": "workspace:*",
+    "@phosphor-icons/react": "^2.1.10",
+    "@smritheon/memora-protocol": "0.1.0-rc.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "simple-icons": "^15.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.3.0",
+    "vite": "^6.1.0",
+    "vitest": "^1.2.0"
+  },
+  "build": {
+    "appId": "dev.getmemora.local",
+    "productName": "Memora Local",
+    "asar": true,
+    "directories": { "output": "release" },
+    "files": [
+      "dist-main/**",
+      "dist-renderer/**",
+      "package.json",
+      "!node_modules/@smritheon/*/src/**",
+      "!node_modules/@smritheon/*/tsconfig.json"
+    ],
+    "extraResources": [
+      { "from": "../../packages/cli/dist", "to": "cli" },
+      { "from": "../vscode-extension", "to": "vscode-extension", "filter": ["package.json", "extension.cjs"] }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "notarize": true,
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }]
+    },
+    "dmg": { "sign": false }
+  }
+}

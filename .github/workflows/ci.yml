@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "22"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # No committed pnpm-lock.yaml, and plain (non-frozen) install rather than
+      # --frozen-lockfile: this repo's package.json pins @smritheon/memora-verifier and
+      # @smritheon/memora-core to versions that don't exist on npm yet (see AGENTS.md
+      # "Cross-repo dependencies"). This step — and therefore this whole workflow — is
+      # EXPECTED to fail with a 404 until both are published. That's not a bug to silence;
+      # it's the accurate signal that Phase 3c isn't installable yet. Once published,
+      # switch to --frozen-lockfile and commit the resulting lockfile.
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build (local -> local-cli)
+        run: pnpm build
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Typecheck vscode-extension
+        run: pnpm run typecheck:vscode-extension
+
+      - name: Build desktop
+        run: pnpm run desktop:build
+
+      - name: Check private-infrastructure boundary
+        run: pnpm run check:private-boundary

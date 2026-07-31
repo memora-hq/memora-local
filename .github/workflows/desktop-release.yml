@@ -1,0 +1,38 @@
+name: desktop-release
+
+on:
+  push:
+    tags:
+      - "local-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    env:
+      CSC_LINK: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+      CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      # Requires @smritheon/memora-verifier and @smritheon/memora-core to be published and
+      # a real pnpm-lock.yaml committed (see AGENTS.md) -- don't tag a local-v* release
+      # before both are true, or this step fails.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm desktop:build
+      - run: pnpm --filter @memora/desktop exec electron-builder --mac --publish never
+      - uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          files: apps/desktop/release/*

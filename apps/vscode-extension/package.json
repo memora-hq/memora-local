@@ -1,0 +1,27 @@
+{
+  "name": "memora-local",
+  "displayName": "Memora Local",
+  "description": "Local execution evidence for coding-agent workspace activity.",
+  "version": "0.1.0",
+  "publisher": "smritheon",
+  "license": "Apache-2.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "memoraLocal.status",
+        "title": "Memora Local: Show Capture Status"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node --check extension.cjs",
+    "test": "node --test extension.test.cjs"
+  }
+}

@@ -1,0 +1,34 @@
+# ── Dependencies ──────────────────────────────────────────────────────────────
+**/node_modules/
+.pnpm-store/
+
+# ── Build output ──────────────────────────────────────────────────────────────
+**/dist/
+**/dist-main/
+**/dist-renderer/
+**/release/
+*.tsbuildinfo
+.turbo/
+**/.cache/
+**/.vite/
+**/.vite-temp/
+
+# ── Test / coverage ────────────────────────────────────────────────────────────
+**/coverage/
+.nyc_output/
+
+# ── OS / Editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+*.swo
+*.bak
+*~
+.vscode/
+.idea/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+*.pid
+.eslintcache
