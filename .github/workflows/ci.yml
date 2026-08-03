@@ -22,23 +22,13 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
-      # No `cache: pnpm` here: actions/setup-node's cache step requires a committed
-      # lockfile to key off of, and fails outright (before even reaching install) without
-      # one. Re-add it once a real pnpm-lock.yaml exists (see below).
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
 
-      # No committed pnpm-lock.yaml, and plain (non-frozen) install rather than
-      # --frozen-lockfile: this repo's package.json pins @memora-hq/memora-verifier and
-      # @memora-hq/memora-core to versions that don't exist on npm yet (see AGENTS.md
-      # "Cross-repo dependencies"). This step — and therefore this whole workflow — is
-      # EXPECTED to fail with a 404 until both are published. That's not a bug to silence;
-      # it's the accurate signal that Phase 3c isn't installable yet. Once published,
-      # switch to --frozen-lockfile, commit the resulting lockfile, and restore
-      # `cache: pnpm` above.
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build (local -> local-cli)
         run: pnpm build
