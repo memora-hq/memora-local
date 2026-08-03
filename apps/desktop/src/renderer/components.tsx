@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
-import type { IntegrationDiagnosticResult, IntegrationHealth, LocalVerificationResult, SessionSummary } from "@smritheon/memora-local";
+import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
+import type { IntegrationDiagnosticResult, IntegrationHealth, LocalVerificationResult, SessionSummary } from "@memora-hq/memora-local";
 import {
   ArrowClockwise,
   ArrowRight,

@@ -1,11 +1,11 @@
-import type { LocalEventRecordV1, LocalEvidenceBundle, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
+import type { LocalEventRecordV1, LocalEvidenceBundle, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
 import {
   disclosedPayload,
   summarizeSession,
   type BundleDisclosure,
   type LocalBundleVerification,
   type SessionSummary,
-} from "@smritheon/memora-local";
+} from "@memora-hq/memora-local";
 import { revealLocalEvent, type LocalDecryptedEventDetail } from "./eventDetail.js";
 import { collectSessionFacts, presentLocalEvent, type LocalEventPresentation } from "./eventPresentation.js";
 

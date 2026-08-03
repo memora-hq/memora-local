@@ -1,9 +1,9 @@
-import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
-import type { EventCategory, EventStatus, IntegrationHealth } from "@smritheon/memora-local";
+import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
+import type { EventCategory, EventStatus, IntegrationHealth } from "@memora-hq/memora-local";
 
 export type SessionProvider = "codex" | "claude" | "cursor" | "vscode" | "local";
 /**
- * Event classification comes from `@smritheon/memora-local`'s taxonomy, delivered per event on
+ * Event classification comes from `@memora-hq/memora-local`'s taxonomy, delivered per event on
  * `LocalEventPresentation` by the main process. The renderer is a sandboxed browser bundle
  * and cannot import that package at runtime, so IPC — not an import — is how the timeline
  * and the session summary stay on one implementation.

@@ -1,4 +1,4 @@
-import type { LocalVerificationResult } from "@smritheon/memora-local";
+import type { LocalVerificationResult } from "@memora-hq/memora-local";
 import { describe, expect, it } from "vitest";
 import {
   assuranceLabels,

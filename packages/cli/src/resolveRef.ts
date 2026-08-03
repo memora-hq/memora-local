@@ -1,4 +1,4 @@
-import type { MemoryRef } from "@smritheon/memora-protocol";
+import type { MemoryRef } from "@memora-hq/memora-protocol";
 
 export type LookupIdKind = "memory_id" | "event_id";
 

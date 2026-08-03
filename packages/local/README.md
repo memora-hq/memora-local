@@ -1,12 +1,12 @@
-# @smritheon/memora-local
+# @memora-hq/memora-local
 
 The evidence-capture engine behind Memora's desktop app and CLI: records a live coding-agent
 session (via a wrapped pseudo-terminal), stores it on disk, and produces the same signed,
-verifiable evidence that [`@smritheon/memora-verifier`](https://github.com/memora-hq/memora-sdk/tree/main/packages/verifier)
+verifiable evidence that [`@memora-hq/memora-verifier`](https://github.com/memora-hq/memora-sdk/tree/main/packages/verifier)
 checks.
 
 Most people don't install this directly — it arrives as a dependency of
-[`@smritheon/memora-local-cli`](../cli) or the desktop app. Install it yourself only if you're
+[`@memora-hq/memora-local-cli`](../cli) or the desktop app. Install it yourself only if you're
 building your own capture surface on top of the same evidence format.
 
 ## What's in here
@@ -22,13 +22,13 @@ building your own capture surface on top of the same evidence format.
 | `knownSigners.ts` | A local address book of previously-seen signing keys (continuity, not identity) |
 
 Session store, identity, manifest signing, and bundle/session verification are **not**
-reimplemented here — they come from `@smritheon/memora-verifier`, this package's only Memora
-dependency besides `@smritheon/memora-protocol`.
+reimplemented here — they come from `@memora-hq/memora-verifier`, this package's only Memora
+dependency besides `@memora-hq/memora-protocol`.
 
 ## What's deliberately not here
 
 Nothing about talking to Memora's hosted API, and nothing about verifying evidence you didn't
-produce yourself — see `@smritheon/memora-verifier` and
+produce yourself — see `@memora-hq/memora-verifier` and
 [`memora-sdk`](https://github.com/memora-hq/memora-sdk) for both.
 
 ## License

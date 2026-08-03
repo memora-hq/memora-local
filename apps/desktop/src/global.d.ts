@@ -1,5 +1,5 @@
-import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
-import type { IntegrationDiagnosticResult, KnownSigner, LocalVerificationResult, SessionSummary } from "@smritheon/memora-local";
+import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
+import type { IntegrationDiagnosticResult, KnownSigner, LocalVerificationResult, SessionSummary } from "@memora-hq/memora-local";
 import type { BundleVerificationReply, ExportBundleReply, ReceiptBundleRef } from "./main/bundleView";
 import type { IntegrationSettings, ReadingLevel } from "./main/integrationSettings";
 

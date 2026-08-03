@@ -1,4 +1,4 @@
-import type { MemoryRef } from "@smritheon/memora-protocol";
+import type { MemoryRef } from "@memora-hq/memora-protocol";
 
 type ReceiptLikeRef = MemoryRef & {
   valid_signature?: boolean | null;

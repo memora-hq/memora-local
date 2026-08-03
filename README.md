@@ -9,8 +9,8 @@ its own name and release cadence:
 
 | Package | Published as | What it is |
 |---|---|---|
-| [`packages/local`](./packages/local) | `@smritheon/memora-local` | The evidence engine: PTY-based session capture, on-disk store, receipts, editor/agent hook integration. |
-| [`packages/cli`](./packages/cli) | `@smritheon/memora-local-cli` | The full `memora` CLI — every command in [`memora-sdk`](https://github.com/memora-hq/memora-sdk)'s CLI, plus `local run`/`receipt`/`hook`/`doctor`. |
+| [`packages/local`](./packages/local) | `@memora-hq/memora-local` | The evidence engine: PTY-based session capture, on-disk store, receipts, editor/agent hook integration. |
+| [`packages/cli`](./packages/cli) | `@memora-hq/memora-local-cli` | The full `memora` CLI — every command in [`memora-sdk`](https://github.com/memora-hq/memora-sdk)'s CLI, plus `local run`/`receipt`/`hook`/`doctor`. |
 | [`apps/desktop`](./apps/desktop) | — (not published; distributed as a signed `.dmg`) | The Electron desktop app: session timeline, receipt viewer, editor/agent hook setup. |
 | [`apps/vscode-extension`](./apps/vscode-extension) | `memora-local` (VS Code Marketplace, unrelated npm-style name collision, pre-existing) | Emits hook events from VS Code / Cursor by shelling out to the installed `memora` CLI. |
 
@@ -27,7 +27,7 @@ here can (and does) depend on `node-pty` and Electron.
 ## Get started
 
 ```bash
-npm install -g @smritheon/memora-local-cli   # not yet published — see AGENTS.md
+npm install -g @memora-hq/memora-local-cli   # not yet published — see AGENTS.md
 memora local init
 memora local run -- pnpm test                # capture a live session
 memora local verify <session-id>             # verify it, offline
@@ -42,7 +42,7 @@ generation, and one-click editor/agent hook setup for Claude Code, Codex, Cursor
 Talking to Memora's hosted API (`write`/`query`/`read`/`verify` against a gateway) and offline
 `.memora` bundle/session verification without the capture engine both live in
 [`memora-sdk`](https://github.com/memora-hq/memora-sdk) — this repo's CLI depends on that same
-`@smritheon/memora-verifier` package rather than reimplementing verification.
+`@memora-hq/memora-verifier` package rather than reimplementing verification.
 
 ## Development
 

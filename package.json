@@ -3,7 +3,7 @@
   "private": true,
   "license": "Apache-2.0",
   "scripts": {
-    "build": "pnpm --filter @smritheon/memora-local --filter @smritheon/memora-local-cli run build",
+    "build": "pnpm --filter @memora-hq/memora-local --filter @memora-hq/memora-local-cli run build",
     "test": "pnpm -r run test",
     "typecheck:vscode-extension": "pnpm --filter memora-local run build",
     "desktop:build": "pnpm run build && pnpm --filter @memora/desktop run build",

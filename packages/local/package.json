@@ -1,5 +1,5 @@
 {
-  "name": "@smritheon/memora-local",
+  "name": "@memora-hq/memora-local",
   "version": "0.1.0",
   "private": false,
   "main": "dist/index.js",
@@ -16,8 +16,8 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@smritheon/memora-protocol": "0.1.0-rc.2",
-    "@smritheon/memora-verifier": "0.1.0-rc.1",
+    "@memora-hq/memora-protocol": "0.1.0-rc.2",
+    "@memora-hq/memora-verifier": "0.1.0",
     "node-pty": "^1.1.0"
   },
   "devDependencies": {
@@ -28,7 +28,7 @@
   "engines": {
     "node": ">=18"
   },
-  "description": "Memora Local's evidence engine: session capture (PTY-based), on-disk store, receipts, and editor/agent hook integration. Depends on @smritheon/memora-verifier for bundle/session verification.",
+  "description": "Memora Local's evidence engine: session capture (PTY-based), on-disk store, receipts, and editor/agent hook integration. Depends on @memora-hq/memora-verifier for bundle/session verification.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

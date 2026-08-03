@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      # Requires @smritheon/memora-verifier and @smritheon/memora-core to be published and
+      # Requires @memora-hq/memora-verifier and @memora-hq/memora-core to be published and
       # a real pnpm-lock.yaml committed (see AGENTS.md) -- don't tag a local-v* release
       # before both are true, or this step fails.
       - run: pnpm install --frozen-lockfile

@@ -11,7 +11,7 @@ import {
   exportLocalBundle,
   readLocalBundle,
   verifyBundle,
-} from "@smritheon/memora-verifier";
+} from "@memora-hq/memora-verifier";
 import { diffSnapshots, snapshotProject } from "./capture.js";
 import { ingestLocalHook } from "./hookAdapter.js";
 import { enqueueLocalHook, startLocalHookSpool } from "./hookTransport.js";

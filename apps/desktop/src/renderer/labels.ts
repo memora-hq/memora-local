@@ -1,4 +1,4 @@
-import type { LocalVerificationResult } from "@smritheon/memora-local";
+import type { LocalVerificationResult } from "@memora-hq/memora-local";
 import { formatDateTime, humanize, shortHash, type TraceCategory, type TraceViewModel } from "./viewModels";
 
 /**

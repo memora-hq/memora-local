@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
+import type { LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
 import { renderReceiptDocument, type ReceiptDocumentInput } from "./receiptDoc.js";
 import type { SessionSummary } from "./summary.js";
-import type { LocalVerificationResult } from "@smritheon/memora-verifier";
+import type { LocalVerificationResult } from "@memora-hq/memora-verifier";
 
 const manifest: LocalExecutionManifestV1 = {
   format: "memora.local.execution",

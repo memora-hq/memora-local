@@ -1,5 +1,5 @@
 {
-  "name": "@smritheon/memora-local-cli",
+  "name": "@memora-hq/memora-local-cli",
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
@@ -18,10 +18,10 @@
   },
   "dependencies": {
     "dotenv": "^16.0.0",
-    "@smritheon/memora-core": "0.3.0-rc.1",
-    "@smritheon/memora-protocol": "0.1.0-rc.2",
-    "@smritheon/memora-verifier": "0.1.0-rc.1",
-    "@smritheon/memora-local": "workspace:*",
+    "@memora-hq/memora-core": "0.3.0-rc.1",
+    "@memora-hq/memora-protocol": "0.1.0-rc.2",
+    "@memora-hq/memora-verifier": "0.1.0",
+    "@memora-hq/memora-local": "workspace:*",
     "ethers": "^6.10.0"
   },
   "devDependencies": {

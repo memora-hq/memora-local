@@ -10,7 +10,7 @@ import {
   LocalSession,
   readLocalBundle,
   verifyLocalBundle,
-} from "@smritheon/memora-local";
+} from "@memora-hq/memora-local";
 import { buildBundleView } from "./bundleView.js";
 
 async function bundleFixture(disclose: boolean) {

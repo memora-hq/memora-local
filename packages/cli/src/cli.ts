@@ -11,7 +11,7 @@ import { config as loadEnv } from "dotenv";
 // Load repo root .env when run via pnpm from package dir (cwd = packages/cli)
 loadEnv({ path: path.resolve(process.cwd(), "../../.env") });
 
-import { MemoraClient } from "@smritheon/memora-core";
+import { MemoraClient } from "@memora-hq/memora-core";
 import { ethers } from "ethers";
 import {
   verifyEventEnvelope,
@@ -27,7 +27,7 @@ import {
   type AgentTeeCanonicalSigningFields,
   type MemoryCommit,
   type MerkleProof,
-} from "@smritheon/memora-protocol";
+} from "@memora-hq/memora-protocol";
 import { fail, isWarning, pass, printChecks, type CheckResult, warn } from "./checks.js";
 import { formatReceiptCard } from "./receiptCard.js";
 import { getLookupId, resolveRef, type ResolveRefOptions } from "./resolveRef.js";
@@ -35,7 +35,7 @@ import { batchProofUrl, resolveCliEndpoints } from "./endpoints.js";
 import { runLightVerify } from "./verifyLight.js";
 // Offline .memora bundle and on-disk session verification — the same primitives
 // memora-sdk's leaner CLI uses. Imported directly here too so this CLI's local
-// commands don't route bundle/session verification through @smritheon/memora-local
+// commands don't route bundle/session verification through @memora-hq/memora-local
 // a second time — one verifier implementation, two consuming CLIs.
 import {
   FileKeyProvider,
@@ -46,10 +46,10 @@ import {
   getOrCreateIdentity,
   verifySession,
   verifyBundle,
-} from "@smritheon/memora-verifier";
+} from "@memora-hq/memora-verifier";
 // Live session capture (PTY), receipts, hook integration, and diagnostics — this is
 // the reason this CLI exists as a separate, heavier package from memora-sdk's:
-// everything here needs @smritheon/memora-local and, transitively, node-pty.
+// everything here needs @memora-hq/memora-local and, transitively, node-pty.
 import {
   KnownSignerStore,
   enqueueLocalHook,
@@ -59,7 +59,7 @@ import {
   summarizeSession,
   type LocalHookProvider,
   type DiagnosticProvider,
-} from "@smritheon/memora-local";
+} from "@memora-hq/memora-local";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { access, writeFile } from "node:fs/promises";

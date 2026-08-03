@@ -1,11 +1,11 @@
-# @smritheon/memora-local-cli
+# @memora-hq/memora-local-cli
 
 Full terminal surface for writing, reading, inspecting, verifying, and **capturing** Memora
 execution records. This is the heavier sibling of
-[`memora-sdk`](https://github.com/memora-hq/memora-sdk)'s `@smritheon/memora-cli`: everything
+[`memora-sdk`](https://github.com/memora-hq/memora-sdk)'s `@memora-hq/memora-cli`: everything
 below plus `memora local run` (live session capture via `node-pty`), `memora local receipt`
 (HTML receipt rendering), `memora local hook` (editor/agent hook ingestion), and `memora local
-doctor` (integration diagnostics) — commands that need `@smritheon/memora-local` and don't ship
+doctor` (integration diagnostics) — commands that need `@memora-hq/memora-local` and don't ship
 in the SDK's leaner CLI. Install this one if you want to *produce* evidence, not just verify it.
 
 ## Commands

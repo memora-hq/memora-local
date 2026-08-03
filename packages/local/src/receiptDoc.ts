@@ -1,5 +1,5 @@
-import type { LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
-import type { BundleDisclosure, LocalVerificationResult } from "@smritheon/memora-verifier";
+import type { LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
+import type { BundleDisclosure, LocalVerificationResult } from "@memora-hq/memora-verifier";
 import type { SessionSummary } from "./summary.js";
 
 export interface ReceiptSigner {

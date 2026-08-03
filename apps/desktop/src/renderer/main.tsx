@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
-import type { IntegrationDiagnosticResult, IntegrationHealth, LocalVerificationResult, SessionSummary } from "@smritheon/memora-local";
+import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
+import type { IntegrationDiagnosticResult, IntegrationHealth, LocalVerificationResult, SessionSummary } from "@memora-hq/memora-local";
 import { ArrowLeft, ArrowRight, CheckCircle, EyeSlash, HardDrives, PlugsConnected, ShieldCheck, Sparkle, Warning } from "@phosphor-icons/react";
 import {
   AgentChoice,

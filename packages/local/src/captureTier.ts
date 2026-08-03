@@ -1,4 +1,4 @@
-import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
+import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
 import { getAdapter } from "./adapters/registry.js";
 import type { CaptureTier } from "./adapters/types.js";
 

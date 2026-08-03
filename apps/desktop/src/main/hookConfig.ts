@@ -1,4 +1,4 @@
-import { getAdapter } from "@smritheon/memora-local";
+import { getAdapter } from "@memora-hq/memora-local";
 
 export type HookProvider = string;
 export type HookGroup = {

@@ -4,7 +4,7 @@ import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startLocalHookSpool } from "./hookTransport.js";
-import { LocalEvidenceStore, verifySession, FileKeyProvider } from "@smritheon/memora-verifier";
+import { LocalEvidenceStore, verifySession, FileKeyProvider } from "@memora-hq/memora-verifier";
 import { getAdapter } from "./adapters/registry.js";
 
 export type DiagnosticProvider = string;

@@ -1,4 +1,4 @@
-import type { DiagnosticProvider, IntegrationDiagnosticResult } from "@smritheon/memora-local";
+import type { DiagnosticProvider, IntegrationDiagnosticResult } from "@memora-hq/memora-local";
 import type { TerminalAgentId } from "./shellIntegration.js";
 
 export type IntegrationId = string;

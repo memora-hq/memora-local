@@ -1,6 +1,6 @@
 import { basename } from "node:path";
-import type { LocalEventRecordV1, MemoryPayload } from "@smritheon/memora-protocol";
-import { classifyEventType, type EventCategory, type EventRole, type EventStatus, type SessionSummaryFacts } from "@smritheon/memora-local";
+import type { LocalEventRecordV1, MemoryPayload } from "@memora-hq/memora-protocol";
+import { classifyEventType, type EventCategory, type EventRole, type EventStatus, type SessionSummaryFacts } from "@memora-hq/memora-local";
 
 export interface LocalEventPresentation {
   provider: "codex" | "claude" | "cursor" | "vscode" | "local";
@@ -10,8 +10,8 @@ export interface LocalEventPresentation {
   target?: string;
   correlationId?: string;
   /**
-   * Event classification from `@smritheon/memora-local`, carried to the renderer over IPC. The
-   * renderer is a sandboxed browser bundle and cannot import `@smritheon/memora-local` at runtime,
+   * Event classification from `@memora-hq/memora-local`, carried to the renderer over IPC. The
+   * renderer is a sandboxed browser bundle and cannot import `@memora-hq/memora-local` at runtime,
    * so this is how the timeline shares one taxonomy with the session summary.
    */
   category?: EventCategory;

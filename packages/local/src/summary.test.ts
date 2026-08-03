@@ -1,4 +1,4 @@
-import type { LocalCaptureWarning, LocalEventRecordV1, LocalExecutionManifestV1, MemoryCommit } from "@smritheon/memora-protocol";
+import type { LocalCaptureWarning, LocalEventRecordV1, LocalExecutionManifestV1, MemoryCommit } from "@memora-hq/memora-protocol";
 import { describe, expect, it } from "vitest";
 import { summarizeSession } from "./summary.js";
 

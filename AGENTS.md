@@ -7,16 +7,16 @@ imports source from directly.
 
 ## What's in here, and why node-pty lives here specifically
 
-- `packages/local` (`@smritheon/memora-local`) — the capture engine: `run.ts` spawns a PTY
+- `packages/local` (`@memora-hq/memora-local`) — the capture engine: `run.ts` spawns a PTY
   (`node-pty`) and records a live session; `capture.ts`/`captureTier.ts` snapshot a project
   directory; `hookAdapter.ts`/`hookTransport.ts` ingest editor/agent lifecycle hooks;
   `receiptDoc.ts`/`summary.ts` render human-readable output; `integrationDiagnostic.ts` checks
   whether an editor/agent integration is wired up correctly. It depends on
-  `@smritheon/memora-verifier` (from `memora-sdk`, published on npm) for bundle/session
+  `@memora-hq/memora-verifier` (from `memora-sdk`, published on npm) for bundle/session
   verification rather than reimplementing it.
-- `packages/cli` (`@smritheon/memora-local-cli`) — the full `memora` binary: every command
+- `packages/cli` (`@memora-hq/memora-local-cli`) — the full `memora` binary: every command
   `memora-sdk`'s CLI has, plus `local run`/`receipt`/`hook`/`doctor`, which need
-  `@smritheon/memora-local` and are the reason this CLI is a separate, heavier package rather
+  `@memora-hq/memora-local` and are the reason this CLI is a separate, heavier package rather
   than something `memora-sdk` ships.
 - `apps/desktop` — Electron app. Bundles `packages/cli`'s built output as an `extraResource`
   and installs it as the `memora` launcher at `~/.local/bin/memora`; editor/agent hooks
@@ -40,11 +40,11 @@ private-infrastructure leakage.)
 
 ## Cross-repo dependencies
 
-`@smritheon/memora-protocol` and `@smritheon/memora-verifier` (and, in `packages/cli`,
-`@smritheon/memora-core`) are real npm dependencies here, not workspace links — this repo has
+`@memora-hq/memora-protocol` and `@memora-hq/memora-verifier` (and, in `packages/cli`,
+`@memora-hq/memora-core`) are real npm dependencies here, not workspace links — this repo has
 no `packages/protocol`, `packages/verifier`, or `packages/sdk` directories of its own. Bump
-pinned versions deliberately. As of this repo's creation, `@smritheon/memora-verifier` and the
-split-aware `@smritheon/memora-core` have not been published yet (see the private
+pinned versions deliberately. As of this repo's creation, `@memora-hq/memora-verifier` and the
+split-aware `@memora-hq/memora-core` have not been published yet (see the private
 `memora-cloud` repo's OSS-split tracking) — the version pins here are the *intended* next
 versions, not resolvable from a truly clean external clone until that publish happens.
 
@@ -52,7 +52,7 @@ versions, not resolvable from a truly clean external clone until that publish ha
 
 `apps/vscode-extension`'s own `package.json` name is `"memora-local"` (unscoped, VS Code
 Marketplace convention) — this predates the repo split and is an unrelated namespace from the
-scoped npm packages (`@smritheon/memora-local`, etc.) above. Don't conflate the two when
+scoped npm packages (`@memora-hq/memora-local`, etc.) above. Don't conflate the two when
 searching for "memora-local" in either context.
 
 ## What does NOT belong in this repo

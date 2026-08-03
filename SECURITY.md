@@ -2,10 +2,10 @@
 
 ## Scope
 
-This policy covers `@smritheon/memora-local`, `@smritheon/memora-local-cli`, the desktop app
+This policy covers `@memora-hq/memora-local`, `@memora-hq/memora-local-cli`, the desktop app
 (`apps/desktop`), and the VS Code/Cursor extension (`apps/vscode-extension`) in this
 repository. It does not cover Memora's hosted service (that's `memora-cloud`) or the
-verification logic in `@smritheon/memora-verifier` / the client SDK (that's `memora-sdk`) —
+verification logic in `@memora-hq/memora-verifier` / the client SDK (that's `memora-sdk`) —
 each has its own security process.
 
 ## Supported versions
@@ -39,7 +39,7 @@ marked `partial`, never silently upgraded to `complete`.
 
 **A signature proves the record was not altered. It does not prove who produced it.** Matching
 a recovered signing key to a real-world identity is outside what this repo (or
-`@smritheon/memora-verifier`) establishes.
+`@memora-hq/memora-verifier`) establishes.
 
 **The desktop app installs a shell launcher at `~/.local/bin/memora`** that editor/agent hooks
 and the VS Code/Cursor extension invoke. Treat that path as a trust boundary — anything that

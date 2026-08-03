@@ -1,6 +1,6 @@
 # Contributing
 
-`memora-local` (`@smritheon/memora-local`, `@smritheon/memora-local-cli`, the desktop app, and
+`memora-local` (`@memora-hq/memora-local`, `@memora-hq/memora-local-cli`, the desktop app, and
 the VS Code/Cursor extension) is an open-source developer preview under Apache 2.0.
 Contributions are welcome — bug fixes, documentation improvements, editor/agent integration
 support, and desktop app ergonomics all help.
@@ -17,7 +17,7 @@ straight to a PR.
 change needs one, it belongs in the private `memora-cloud` repo instead.
 
 **Verification logic (bundle/session integrity checks) lives in `memora-sdk`'s
-`@smritheon/memora-verifier`, not here.** If you find a verification bug, file it against
+`@memora-hq/memora-verifier`, not here.** If you find a verification bug, file it against
 `memora-sdk`, not this repo — duplicating that logic here would defeat the point of the split.
 
 ## Development setup
@@ -35,7 +35,7 @@ pnpm run check:private-boundary
 1. Fork the repository and create a branch from `main`.
 2. Make changes. Keep commits focused — one logical change per commit.
 3. If your change touches a cross-repo dependency version pin
-   (`@smritheon/memora-protocol`/`memora-verifier`/`memora-core`), update it deliberately.
+   (`@memora-hq/memora-protocol`/`memora-verifier`/`memora-core`), update it deliberately.
 4. Run `pnpm build && pnpm test && pnpm run check:private-boundary` locally before pushing. CI
    runs the same, plus a desktop build.
 5. Open the PR against `main`.

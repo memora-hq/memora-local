@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@smritheon/memora-protocol";
+import type { LocalEventRecordV1, LocalExecutionManifestV1 } from "@memora-hq/memora-protocol";
 import { buildTrace, eventLabel, formatDateTime, formatTime, groupEvents, groupSessionsByProvider, healthLabel, humanize, providerForSession, sessionDuration, shortHash } from "./viewModels";
 
 const event = (observed_at: string, event_type?: string, id = "memory"): LocalEventRecordV1 => ({
@@ -18,7 +18,7 @@ const event = (observed_at: string, event_type?: string, id = "memory"): LocalEv
 });
 
 // buildTrace reads each event's category/status/role off the presentation the main process
-// builds with @smritheon/memora-local's classifyEventType. These fixtures spell out that contract.
+// builds with @memora-hq/memora-local's classifyEventType. These fixtures spell out that contract.
 const present = (
   title: string,
   classification: Pick<LocalEventPresentation, "category" | "status" | "role">,

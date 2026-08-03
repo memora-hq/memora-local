@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decrypt, type MemoryPayload } from "@smritheon/memora-protocol";
+import { decrypt, type MemoryPayload } from "@memora-hq/memora-protocol";
 import {
   adapters,
   deriveLocalEncryptionKey,
@@ -23,7 +23,7 @@ import {
   type DiagnosticProvider,
   type IntegrationDiagnosticResult,
   type KnownSigner,
-} from "@smritheon/memora-local";
+} from "@memora-hq/memora-local";
 import {
   buildBundleView,
   type BundleVerificationReply,

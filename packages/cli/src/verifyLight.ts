@@ -1,4 +1,4 @@
-import type { MemoryRef } from "@smritheon/memora-protocol";
+import type { MemoryRef } from "@memora-hq/memora-protocol";
 import { fail, pass, type CheckResult, warn } from "./checks.js";
 
 type VerifyableRef = MemoryRef & {

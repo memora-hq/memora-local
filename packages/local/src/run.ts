@@ -3,7 +3,7 @@ import { access } from "node:fs/promises";
 import { delimiter, isAbsolute, join } from "node:path";
 import { spawn as spawnProcess } from "node:child_process";
 import * as pty from "node-pty";
-import type { LocalSession } from "@smritheon/memora-verifier";
+import type { LocalSession } from "@memora-hq/memora-verifier";
 import { diffSnapshots, snapshotProject } from "./capture.js";
 
 export interface RunLocalCommandOptions {

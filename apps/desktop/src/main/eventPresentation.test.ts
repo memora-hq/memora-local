@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { LocalEventRecordV1, MemoryPayload } from "@smritheon/memora-protocol";
+import type { LocalEventRecordV1, MemoryPayload } from "@memora-hq/memora-protocol";
 import { collectSessionFacts, presentLocalEvent } from "./eventPresentation.js";
 
 const event = (type: string): LocalEventRecordV1 => ({

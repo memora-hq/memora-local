@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rmdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { getAdapter } from "./adapters/registry.js";
-import { FileKeyProvider, getOrCreateIdentity, LocalSession, LocalEvidenceStore } from "@smritheon/memora-verifier";
+import { FileKeyProvider, getOrCreateIdentity, LocalSession, LocalEvidenceStore } from "@memora-hq/memora-verifier";
 
 export type LocalHookProvider = string;
 

@@ -17,10 +17,10 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",
     "@fontsource/ibm-plex-sans": "^5.2.6",
-    "@smritheon/memora-local-cli": "workspace:*",
-    "@smritheon/memora-local": "workspace:*",
+    "@memora-hq/memora-local-cli": "workspace:*",
+    "@memora-hq/memora-local": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
-    "@smritheon/memora-protocol": "0.1.0-rc.2",
+    "@memora-hq/memora-protocol": "0.1.0-rc.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "simple-icons": "^15.17.0"
@@ -45,8 +45,8 @@
       "dist-main/**",
       "dist-renderer/**",
       "package.json",
-      "!node_modules/@smritheon/*/src/**",
-      "!node_modules/@smritheon/*/tsconfig.json"
+      "!node_modules/@memora-hq/*/src/**",
+      "!node_modules/@memora-hq/*/tsconfig.json"
     ],
     "extraResources": [
       { "from": "../../packages/cli/dist", "to": "cli" },

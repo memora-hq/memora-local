@@ -1,4 +1,4 @@
-export * from "@smritheon/memora-verifier";
+export * from "@memora-hq/memora-verifier";
 export * from "./capture.js";
 export * from "./run.js";
 export * from "./hookAdapter.js";
