@@ -52,15 +52,22 @@ import {
 // everything here needs @memora-hq/memora-local and, transitively, node-pty.
 import {
   KnownSignerStore,
+  countFailedHookEntries,
+  daemonLogPath,
   enqueueLocalHook,
   getAdapter,
   hookConfigPathFor,
+  isDaemonRunning,
   mergeMemoraHooks,
+  readDaemonLog,
   readHookConfigFile,
+  removeDaemonPidFile,
   removeMemoraHooks,
   renderReceiptDocument,
+  runDaemonForeground,
   runIntegrationDiagnostic,
   runLocalCommand,
+  spawnDaemon,
   summarizeSession,
   writeHookConfigFile,
   type LocalHookProvider,
@@ -213,6 +220,17 @@ async function cmdLocalHook(provider: string) {
   if (!input.trim()) throw new Error("hook JSON is required on stdin");
   const payload = JSON.parse(input) as Record<string, unknown>;
   await enqueueLocalHook(provider as LocalHookProvider, payload);
+
+  // Purely local plumbing: this drains /tmp hook events into the local evidence store. It
+  // never touches the network or implies an upload — that only happens via `local publish`.
+  // A failure here must not fail the hook itself, so it's caught and swallowed.
+  try {
+    if (!(await isDaemonRunning()).running) {
+      await spawnDaemon(localPaths().root, resolveSelfCliPath());
+    }
+  } catch (error) {
+    console.error(`[memora] daemon autostart failed: ${(error as Error).message}`);
+  }
 }
 
 // The hook command embeds an absolute path to this CLI so agent config files keep working
@@ -249,6 +267,54 @@ async function cmdLocalUninstallHooks(provider: string) {
   const { backedUp } = await writeHookConfigFile(configPath, cleaned);
   if (backedUp) console.log(`✓ Backed up ${configPath}`);
   console.log(`✓ Uninstalled ${getAdapter(provider)!.displayName} hook`);
+}
+
+async function cmdDaemonStart() {
+  const paths = localPaths();
+  const status = await isDaemonRunning();
+  if (status.running) {
+    console.log(`Daemon already running (pid ${status.pid})`);
+    return;
+  }
+  const pid = await spawnDaemon(paths.root, resolveSelfCliPath());
+  console.log(`✓ Daemon started (pid ${pid})`);
+  console.log(`  log: ${daemonLogPath(paths.root)}`);
+}
+
+async function cmdDaemonStop() {
+  const status = await isDaemonRunning();
+  if (!status.running || !status.pid) {
+    console.log("Daemon is not running");
+    return;
+  }
+  process.kill(status.pid, "SIGTERM");
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    if (!(await isDaemonRunning()).running) break;
+  }
+  // Safety net in case the daemon didn't get to clean up its own pidfile (e.g. SIGKILL).
+  await removeDaemonPidFile();
+  console.log("✓ Daemon stopped");
+}
+
+async function cmdDaemonStatus() {
+  const paths = localPaths();
+  const status = await isDaemonRunning();
+  console.log(status.running ? `Daemon running (pid ${status.pid})` : "Daemon not running");
+  const failed = await countFailedHookEntries();
+  if (failed > 0) console.log(`⚠ ${failed} hook event(s) failed to ingest — see ${daemonLogPath(paths.root)}`);
+}
+
+async function cmdDaemonLogs() {
+  const paths = localPaths();
+  const lines = await readDaemonLog(paths.root);
+  if (lines.length === 0) { console.log("No daemon log yet."); return; }
+  for (const line of lines) console.log(line);
+}
+
+// Not part of the public command list — the detached child spawnDaemon() launches runs this.
+async function cmdDaemonRunInternal() {
+  await runDaemonForeground(localPaths().root);
 }
 
 async function resolveExecutable(command: string): Promise<string | null> {
@@ -1126,6 +1192,7 @@ async function main() {
     console.log("  memora local hook --provider codex|claude|vscode|cursor  # integration use");
     console.log("  memora local install-hooks --provider codex|claude");
     console.log("  memora local uninstall-hooks --provider codex|claude");
+    console.log("  memora daemon start|stop|status|logs");
     process.exit(1);
   }
 
@@ -1180,6 +1247,16 @@ async function main() {
       await cmdLocalUninstallHooks(provider);
     } else if (cmd === "local" && sub === "doctor") {
       await cmdLocalDoctor(getArg("--provider") ?? "codex", hasFlag("--json"));
+    } else if (cmd === "daemon" && sub === "start") {
+      await cmdDaemonStart();
+    } else if (cmd === "daemon" && sub === "stop") {
+      await cmdDaemonStop();
+    } else if (cmd === "daemon" && sub === "status") {
+      await cmdDaemonStatus();
+    } else if (cmd === "daemon" && sub === "logs") {
+      await cmdDaemonLogs();
+    } else if (cmd === "daemon" && sub === "run-internal") {
+      await cmdDaemonRunInternal();
     } else if (cmd === "write") {
       const agent = getArg("--agent");
       const file  = getArg("--file");

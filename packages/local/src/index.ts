@@ -4,6 +4,7 @@ export * from "./run.js";
 export * from "./hookAdapter.js";
 export * from "./hookTransport.js";
 export * from "./hookConfig.js";
+export * from "./daemon.js";
 export * from "./integrationDiagnostic.js";
 export * from "./adapters/types.js";
 export * from "./adapters/registry.js";
