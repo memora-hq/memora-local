@@ -52,31 +52,47 @@ import {
 // everything here needs @memora-hq/memora-local and, transitively, node-pty.
 import {
   KnownSignerStore,
+  assertPublishSize,
+  buildPublishArtifact,
+  buildPublishArtifactFromBundle,
+  clearPublishAttempt,
   countFailedHookEntries,
+  createPublication,
   daemonLogPath,
+  deletePublication,
   enqueueLocalHook,
+  ensurePublishLogin,
   getAdapter,
   hookConfigPathFor,
   isDaemonRunning,
+  loadPublishAttempt,
+  loadPublishSession,
   mergeMemoraHooks,
+  openUrlInBrowser,
+  PublishArtifactTooLargeError,
   readDaemonLog,
   readHookConfigFile,
   removeDaemonPidFile,
   removeMemoraHooks,
   renderReceiptDocument,
+  resolvePublishAttempt,
   runDaemonForeground,
   runIntegrationDiagnostic,
   runLocalCommand,
+  savePublishAttempt,
   spawnDaemon,
   summarizeSession,
   writeHookConfigFile,
   type LocalHookProvider,
   type DiagnosticProvider,
+  type PublishArtifact,
 } from "@memora-hq/memora-local";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { access, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
+import { createInterface } from "node:readline/promises";
+import { spawn } from "node:child_process";
 
 // MEMORA_BASE_URL points at the public gateway and serves both roles; without it we
 // fall back to today's direct indexer + key-broker origins for local development.
@@ -183,6 +199,171 @@ async function cmdLocalVerifyBundle(path: string) {
     ? `Seen before:      yes${signer.label ? ` (${signer.label})` : ""}, ${signer.receipts_verified} receipts since ${signer.first_seen}`
     : "Seen before:      no — this is the first receipt verified from this key");
   console.log("A signature proves the record was not altered. It does not prove who produced it.");
+}
+
+// Publishing is a separate hosted service from the write/query/read gateway above (that's
+// on-chain evidence via the indexer; this is the memora.io hosted viewer) — its own origin,
+// overridable for local development against a non-production viewer/API.
+const PUBLISH_ORIGIN = process.env.MEMORA_PUBLISH_BASE_URL ?? "https://memora.dev";
+
+function formatDuration(startedAt: string, completedAt: string | undefined): string {
+  if (!completedAt) return "in progress";
+  const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+  if (!Number.isFinite(ms) || ms < 0) return "unknown";
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
+
+function formatBytes(byteSize: number): string {
+  return byteSize >= 1_000_000 ? `${(byteSize / 1_000_000).toFixed(1)} MB` : `${(byteSize / 1000).toFixed(0)} KB`;
+}
+
+async function confirm(question: string): Promise<boolean> {
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "Publishing requires interactive confirmation. Non-interactive publishing is disabled " +
+      "because a publication may expose session contents to anyone holding its share link.",
+    );
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = await rl.question(`${question} [y/N] `);
+    return answer.trim().toLowerCase() === "y";
+  } finally {
+    rl.close();
+  }
+}
+
+function copyToClipboard(text: string): void {
+  const command = process.platform === "darwin" ? "pbcopy" : process.platform === "win32" ? "clip" : null;
+  if (!command) return;
+  try {
+    const child = spawn(command, { stdio: ["pipe", "ignore", "ignore"] });
+    child.stdin.end(text);
+  } catch {
+    // Best-effort — the link is always printed too.
+  }
+}
+
+/** Resolves the publish source: an existing bundle file path, or a session ID against the store. */
+async function resolvePublishArtifact(
+  source: string,
+  paths: ReturnType<typeof localPaths>,
+): Promise<{ sessionKey: string; artifact: PublishArtifact }> {
+  const identity = await paths.keys.load();
+  if (!identity) throw new Error("no local identity on this device — run `memora local init` first");
+
+  const asPath = resolve(source);
+  const isBundleFile = await access(asPath, constants.R_OK).then(() => true, () => false);
+  if (isBundleFile) {
+    const bundle = await readLocalBundle(asPath);
+    return { sessionKey: bundle.manifest.session_id, artifact: buildPublishArtifactFromBundle(bundle, identity) };
+  }
+  return { sessionKey: source, artifact: await buildPublishArtifact(paths.store, source, identity) };
+}
+
+async function cmdLocalPublish(source: string, open: boolean) {
+  const paths = localPaths();
+  const { sessionKey, artifact } = await resolvePublishArtifact(source, paths);
+
+  try {
+    assertPublishSize(artifact.byteSize);
+  } catch (error) {
+    if (error instanceof PublishArtifactTooLargeError) {
+      console.log(`✗ ${error.message}`);
+      process.exitCode = 1;
+      return;
+    }
+    throw error;
+  }
+
+  console.log("Preparing shareable session…\n");
+  console.log(`Session      ${sessionKey}`);
+  console.log(`Events       ${artifact.eventCount}`);
+  console.log(`Duration     ${formatDuration(artifact.bundle.manifest.started_at, artifact.bundle.manifest.completed_at)}`);
+  console.log(`Upload       ${formatBytes(artifact.byteSize)}\n`);
+  console.log("The complete share link is the access credential — anyone who receives it can");
+  console.log("view this published session. Forwarding the link forwards access.\n");
+
+  if (!(await confirm("Publish to Memora Cloud?"))) {
+    console.log("Not published.");
+    return;
+  }
+
+  let token: string;
+  try {
+    token = await ensurePublishLogin({
+      dataRoot: paths.root,
+      baseUrl: PUBLISH_ORIGIN,
+      onPrompt: ({ verificationUrl, userCode }) => {
+        console.log(`\nSign in to publish: ${verificationUrl}`);
+        console.log(`Code: ${userCode}\n`);
+      },
+    });
+  } catch (error) {
+    console.log(`\n✗ Could not sign in: ${(error as Error).message}`);
+    console.log("\nYour session remains stored locally. Nothing was uploaded.");
+    console.log(`\nRetry:\n  memora local publish ${source}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const attempt = await resolvePublishAttempt(paths.root, sessionKey, artifact.digest);
+  await savePublishAttempt(paths.root, { ...attempt, state: "UPLOADING" });
+
+  let result: { version: number; id: string };
+  try {
+    console.log("Uploading…");
+    result = await createPublication({
+      baseUrl: PUBLISH_ORIGIN,
+      token,
+      attemptId: attempt.attempt_id,
+      bundle: artifact.bundle,
+      byteSize: artifact.byteSize,
+    });
+  } catch (error) {
+    console.log(`\n✗ Could not reach Memora Cloud: ${(error as Error).message}`);
+    console.log("\nYour session remains stored locally. Nothing was deleted or modified.");
+    console.log(`\nRetry:\n  memora local publish ${source}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  await savePublishAttempt(paths.root, { ...attempt, state: "PUBLISHED", publication_id: result.id });
+
+  const link = `${PUBLISH_ORIGIN}/v/${result.id}#${artifact.key}`;
+  copyToClipboard(link);
+  console.log("\n✓ Published");
+  console.log("✓ Link copied to clipboard\n");
+  console.log(link);
+
+  if (open) {
+    openUrlInBrowser(link);
+    console.log("✓ Opened in browser");
+  }
+}
+
+async function cmdLocalUnpublish(publicationIdArg: string | undefined, sessionArg: string | undefined) {
+  const paths = localPaths();
+  const session = await loadPublishSession(paths.root);
+  if (!session) throw new Error("not signed in — run `memora local publish` first to sign in");
+
+  let publicationId = publicationIdArg;
+  if (!publicationId && sessionArg) {
+    const attempt = await loadPublishAttempt(paths.root, sessionArg);
+    if (!attempt || attempt.state !== "PUBLISHED" || !attempt.publication_id) {
+      throw new Error(`no publication found for session ${sessionArg}`);
+    }
+    publicationId = attempt.publication_id;
+  }
+  if (!publicationId) throw new Error("usage: memora local unpublish <publication-id> | --session <session-id>");
+
+  await deletePublication({ baseUrl: PUBLISH_ORIGIN, token: session.token, publicationId });
+  if (sessionArg) await clearPublishAttempt(paths.root, sessionArg);
+  console.log("✓ Publication deleted.\n");
+  console.log("Existing links will no longer load this session.");
 }
 
 async function cmdLocalReceipt(sessionId: string, output: string) {
@@ -1186,6 +1367,8 @@ async function main() {
     console.log("  memora local show <session-id>");
     console.log("  memora local verify <session-id>");
     console.log("  memora local export <session-id> --out evidence.memora [--disclose]");
+    console.log("  memora local publish <session-id>|<bundle-path> [--open]");
+    console.log("  memora local unpublish <publication-id> | --session <session-id>");
     console.log("  memora local receipt <session-id> --out receipt.html");
     console.log("  memora local verify-bundle <path>");
     console.log("  memora local doctor --provider codex|claude [--json]");
@@ -1224,6 +1407,13 @@ async function main() {
       const output = getArg("--out");
       if (!session || !output) throw new Error("<session-id> and --out required");
       await cmdLocalExport(session, output, hasFlag("--disclose"));
+    } else if (cmd === "local" && sub === "publish") {
+      const source = args[2];
+      if (!source) throw new Error("<session-id>|<bundle-path> required");
+      await cmdLocalPublish(source, hasFlag("--open"));
+    } else if (cmd === "local" && sub === "unpublish") {
+      const positional = args[2] && !args[2].startsWith("--") ? args[2] : undefined;
+      await cmdLocalUnpublish(positional, getArg("--session"));
     } else if (cmd === "local" && sub === "receipt") {
       const session = args[2];
       const output = getArg("--out");
