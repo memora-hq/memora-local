@@ -65,6 +65,7 @@ import {
   finalizePublishArtifact,
   getAdapter,
   hookConfigPathFor,
+  isSupportedPlatform,
   isDaemonRunning,
   loadPublishAttempt,
   loadPublishSession,
@@ -85,6 +86,7 @@ import {
   scanForSecrets,
   spawnDaemon,
   summarizeSession,
+  unsupportedPlatformMessage,
   writeHookConfigFile,
   type LocalHookProvider,
   type DiagnosticProvider,
@@ -1384,6 +1386,11 @@ async function cmdReplayVerify(memoryId: string, expectedSigner?: string) {
 // ── Main dispatch ──────────────────────────────────────────────────────────────
 
 async function main() {
+  if (!isSupportedPlatform()) {
+    console.error(unsupportedPlatformMessage());
+    process.exit(1);
+  }
+
   const args = process.argv.slice(2);
   const cmd  = args[0];
   const sub  = args[1];

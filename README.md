@@ -24,6 +24,20 @@ including people who only want to verify evidence someone else produced — pays
 compilation they'll never use. This repo is where that trade gets made instead: everything
 here can (and does) depend on `node-pty` and Electron.
 
+## Platform support
+
+**Memora Local beta supports macOS and Windows.** No account. No global install. No setup
+wizard — run `npx memora-local` and start.
+
+**Linux is not supported in this beta.** `node-pty` (the native terminal integration this repo
+depends on) has no Linux prebuilds, so a clean Linux install would mean compiling from source —
+that conflicts with the zero-setup promise above, so `memora` refuses to run on Linux with a
+clear message rather than quietly degrading or dropping into a slow, build-tool-dependent
+install. See [#12](https://github.com/memora-hq/memora-local/issues/12) for the reasoning and
+to follow progress. If you want to build from source anyway as a contributor, see
+[Linux (unsupported, contributor-only)](#linux-unsupported-contributor-only) below — that path
+carries none of the beta's installation guarantees.
+
 ## Get started
 
 ```bash
@@ -56,6 +70,23 @@ pnpm test
 pnpm run desktop:build
 pnpm run check:private-boundary   # proves nothing here reaches into Memora Cloud's private tier
 ```
+
+### Linux (unsupported, contributor-only)
+
+Not part of the beta support matrix (see [Platform support](#platform-support) above) — this is
+for people building/testing the repo itself, not an installation path to point end users at.
+
+```bash
+# Debian/Ubuntu build tools node-pty needs to compile from source:
+sudo apt-get install -y python3 make g++
+pnpm install   # node-pty is an optionalDependency; on Linux this compiles it via node-gyp
+pnpm build
+```
+
+`memora`'s own CLI still refuses to run on Linux regardless of whether `node-pty` happened to
+compile — that refusal isn't a build-environment gap you can work around, it's a deliberate
+product decision (#12). This path exists only so contributors can run the test suite and work
+on the capture engine's Linux code paths, not to produce a working end-user install.
 
 ## License
 

@@ -2,9 +2,16 @@ import process from "node:process";
 import { access } from "node:fs/promises";
 import { delimiter, isAbsolute, join } from "node:path";
 import { spawn as spawnProcess } from "node:child_process";
-import * as pty from "node-pty";
 import type { LocalSession } from "@memora-hq/memora-verifier";
 import { diffSnapshots, snapshotProject } from "./capture.js";
+
+// Loaded lazily, not as a top-level import: node-pty is a native addon, and merely importing
+// this module (which most CLI commands do transitively, since it's part of the package's
+// index barrel) must never touch it. On an unsupported platform, or one where the optional
+// dependency failed to install, this throws and the caller falls back to plain pipe capture.
+async function loadPty(): Promise<typeof import("node-pty")> {
+  return import("node-pty");
+}
 
 export interface RunLocalCommandOptions {
   command: string[];
@@ -53,6 +60,7 @@ export async function runLocalCommand(options: RunLocalCommandOptions): Promise<
   let stdinHandler: ((data: Buffer) => void) | undefined;
   let resizeHandler: (() => void) | undefined;
   try {
+    const pty = await loadPty();
     const child = pty.spawn(executable, options.command.slice(1), {
       name: process.env.TERM ?? "xterm-256color",
       cols: options.terminal?.cols ?? process.stdout.columns ?? 120,

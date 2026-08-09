@@ -41,3 +41,151 @@ jobs:
 
       - name: Check private-infrastructure boundary
         run: pnpm run check:private-boundary
+
+  # Release-blocking per #12/#21: proves `npx memora-local` actually installs and works on
+  # every platform the launch copy claims, from a clean environment outside this repo/workspace
+  # — not just "the monorepo's own pnpm install works".
+  platform-install-smoke:
+    name: Install smoke test (${{ matrix.label }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            label: macOS arm64
+          - os: macos-15-intel
+            label: macOS x64
+          - os: windows-latest
+            label: Windows x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages/local and packages/cli
+        run: pnpm run build
+
+      # pnpm pack rewrites the workspace:* dependency to a real semver, matching what an
+      # external `npm install memora-local` actually resolves — `npm pack` does not do this.
+      - name: Pack tarballs
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          (cd packages/local && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
+          (cd packages/cli && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
+
+      - name: Install the packed CLI in a clean directory outside the repo
+        shell: bash
+        run: |
+          mkdir "$RUNNER_TEMP/smoke"
+          cd "$RUNNER_TEMP/smoke"
+          npm init -y >/dev/null
+          npm install "$RUNNER_TEMP"/tarballs/memora-local-*.tgz "$RUNNER_TEMP"/tarballs/memora-hq-memora-local-*.tgz
+
+      - name: CLI boots
+        shell: bash
+        run: |
+          node "$RUNNER_TEMP/smoke/node_modules/memora-local/dist/cli.js" | grep -q "Usage: memora"
+
+      - name: Daemon starts, reports running, and stops cleanly
+        shell: bash
+        env:
+          MEMORA_LOCAL_DATA_DIR: ${{ runner.temp }}/smoke-data
+        run: |
+          CLI="$RUNNER_TEMP/smoke/node_modules/memora-local/dist/cli.js"
+          node "$CLI" daemon start
+          sleep 1
+          node "$CLI" daemon status | grep -qi "running"
+          node "$CLI" daemon stop
+          node "$CLI" daemon status | grep -qi "not running"
+
+      - name: PTY launches a trivial shell and captures its output
+        shell: bash
+        env:
+          MEMORA_LOCAL_DATA_DIR: ${{ runner.temp }}/smoke-data
+        run: |
+          CLI="$RUNNER_TEMP/smoke/node_modules/memora-local/dist/cli.js"
+          node "$CLI" local init
+          node "$CLI" local run -- node -e "console.log('memora-ci-smoke-ok')" | grep -q "memora-ci-smoke-ok"
+
+  # Release-blocking per #12/#21: the negative path. Runs the packed CLI inside a clean Linux
+  # container with no build tools (the worst-case, most realistic "unsupported platform" user)
+  # and proves it refuses with the designed message instead of spewing a node-gyp/compiler
+  # failure — this is what stops a future node-pty/packaging bump from silently regressing
+  # Linux back into failing installs.
+  linux-unsupported-negative-path:
+    name: Linux install (expected unsupported)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages/local and packages/cli
+        run: pnpm run build
+
+      - name: Pack tarballs
+        run: |
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          (cd packages/local && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
+          (cd packages/cli && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
+
+      - name: Install and run inside a clean, build-tool-free Linux container
+        run: |
+          docker run --rm -v "$RUNNER_TEMP/tarballs:/tarballs:ro" node:20-slim bash -c '
+            set -e
+            mkdir /smoke && cd /smoke
+            npm init -y >/dev/null 2>&1
+            npm install /tarballs/memora-local-*.tgz /tarballs/memora-hq-memora-local-*.tgz > /tmp/install.log 2>&1
+            INSTALL_STATUS=$?
+            cat /tmp/install.log
+            if [ "$INSTALL_STATUS" -ne 0 ]; then
+              echo "::error::npm install itself failed on Linux — a failed optional node-pty build must never fail the whole install."
+              exit 1
+            fi
+            if grep -qiE "node-gyp|gyp ERR|CXX|cc1plus" /tmp/install.log; then
+              echo "::error::npm install produced node-gyp/compiler output on Linux — the optional-dependency guard regressed."
+              exit 1
+            fi
+            if [ -d node_modules/node-pty ]; then
+              echo "::error::node-pty installed on a Linux image with no build tools — that should be impossible."
+              exit 1
+            fi
+
+            set +e
+            OUTPUT=$(node node_modules/memora-local/dist/cli.js local init 2>&1)
+            CODE=$?
+            set -e
+            echo "$OUTPUT"
+            if [ "$CODE" -eq 0 ]; then
+              echo "::error::memora exited 0 on Linux — it must refuse to run, not proceed."
+              exit 1
+            fi
+            if ! echo "$OUTPUT" | grep -q "Linux support is not available in this beta"; then
+              echo "::error::memora did not print the expected unsupported-platform message."
+              exit 1
+            fi
+            if echo "$OUTPUT" | grep -qiE "node-gyp|gyp ERR|CXX|cc1plus|at Object|at async"; then
+              echo "::error::memora'"'"'s own output contains compiler/stack-trace noise instead of the clean message."
+              exit 1
+            fi
+          '
