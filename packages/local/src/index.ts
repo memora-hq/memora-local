@@ -8,6 +8,7 @@ export * from "./daemon.js";
 export * from "./publish.js";
 export * from "./publishAuth.js";
 export * from "./publishClient.js";
+export * from "./secretScan.js";
 export * from "./integrationDiagnostic.js";
 export * from "./adapters/types.js";
 export * from "./adapters/registry.js";

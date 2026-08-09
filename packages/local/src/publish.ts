@@ -11,6 +11,7 @@ import {
   type LocalEventRecordV1,
 } from "@memora-hq/memora-protocol";
 import { deriveLocalEncryptionKey, localObjectId, type LocalEvidenceStore, type LocalIdentity } from "@memora-hq/memora-verifier";
+import type { PlaintextForScan } from "./secretScan.js";
 
 /**
  * ~25 MB compressed publish artifact. Not a magic number — a shareable Memora execution
@@ -41,20 +42,28 @@ export interface PublishArtifact {
   digest: string;
 }
 
+/** A session's plaintext, decrypted and verified but not yet re-encrypted — the point in the
+ * publish flow where the secret scan runs, before any encrypt/upload happens. */
+export interface DecryptedPublishSession {
+  manifest: LocalEvidenceBundleV2["manifest"];
+  events: LocalEventRecordV1[];
+  /** Decrypted plaintext (raw JSON string) for every event, keyed by object ID. */
+  plaintexts: Record<string, string>;
+}
+
 /**
- * Re-encrypts every event's payload under a fresh, single-use AES key, decrypting first with
- * the local identity's content key and verifying each plaintext still matches the signed
- * `payload_hash` before it's allowed to travel any further. `payload_hash` covers plaintext,
- * not ciphertext, so this re-encryption never invalidates any signature.
+ * Decrypts every event's payload with the local identity's content key and verifies each
+ * plaintext still matches the signed `payload_hash` before it's allowed to travel any
+ * further. Nothing is encrypted yet — that's the caller's job, after the secret scan runs
+ * over this plaintext.
  */
-function rebuildPayloadsUnderFreshKey(
+function decryptAndVerify(
   events: LocalEventRecordV1[],
   payloads: Record<string, EncryptedPayloadBundle>,
   identity: LocalIdentity,
-  publishKey: Buffer,
-): Record<string, EncryptedPayloadBundle> {
+): Record<string, string> {
   const localKey = deriveLocalEncryptionKey(identity);
-  const rebuilt: Record<string, EncryptedPayloadBundle> = {};
+  const plaintexts: Record<string, string> = {};
   for (const event of events) {
     const objectId = localObjectId(event.commit);
     const sealed = payloads[objectId];
@@ -68,24 +77,69 @@ function rebuildPayloadsUnderFreshKey(
     if (hashPayload(canonicalizePayload(JSON.parse(plaintext))) !== event.commit.payload_hash) {
       throw new Error(`Local evidence is damaged and cannot be published: ${objectId}`);
     }
-    rebuilt[objectId] = encrypt(plaintext, publishKey);
+    plaintexts[objectId] = plaintext;
   }
-  return rebuilt;
+  return plaintexts;
 }
 
-function finalizeArtifact(
-  manifest: LocalEvidenceBundleV2["manifest"],
-  events: LocalEventRecordV1[],
-  payloads: Record<string, EncryptedPayloadBundle>,
-  publishKey: Buffer,
-): PublishArtifact {
-  const bundle: LocalEvidenceBundleV2 = { format: "memora.local.bundle", version: 2, manifest, events, payloads };
+/** Decrypts a live session's payloads from the store — the first half of publishing it. */
+export async function decryptPublishSession(
+  store: LocalEvidenceStore,
+  sessionId: string,
+  identity: LocalIdentity,
+): Promise<DecryptedPublishSession> {
+  const manifest = await store.readManifest(sessionId);
+  const events = await store.readEvents(sessionId);
+  const sealedPayloads: Record<string, EncryptedPayloadBundle> = {};
+  for (const event of events) {
+    const objectId = localObjectId(event.commit);
+    sealedPayloads[objectId] = await store.readPayload(sessionId, objectId);
+  }
+  return { manifest, events, plaintexts: decryptAndVerify(events, sealedPayloads, identity) };
+}
+
+/** Decrypts an already-exported `.memora` bundle's payloads — the file-path publish source. */
+export function decryptPublishBundle(bundle: LocalEvidenceBundle, identity: LocalIdentity): DecryptedPublishSession {
+  return {
+    manifest: bundle.manifest,
+    events: bundle.events,
+    plaintexts: decryptAndVerify(bundle.events, bundle.payloads, identity),
+  };
+}
+
+/** Maps a decrypted session onto scan inputs: one entry per event, labeled for a human to read. */
+export function plaintextsForScan(session: DecryptedPublishSession): PlaintextForScan[] {
+  return session.events.map((event, index) => ({
+    label: `event ${index + 1} (${event.commit.event_type ?? "event"})`,
+    text: session.plaintexts[localObjectId(event.commit)] ?? "",
+  }));
+}
+
+/**
+ * Re-encrypts a decrypted session's payloads under a fresh, single-use AES key — the second
+ * half of publishing, run only after the secret scan has passed or been acknowledged.
+ * `payload_hash` covers plaintext, not ciphertext, so this re-encryption never invalidates any
+ * signature; `manifest`/`events` pass through the bundle untouched, only `payloads` is new.
+ */
+export function finalizePublishArtifact(session: DecryptedPublishSession): PublishArtifact {
+  const publishKey = generateAesKey();
+  const payloads: Record<string, EncryptedPayloadBundle> = {};
+  for (const [objectId, plaintext] of Object.entries(session.plaintexts)) {
+    payloads[objectId] = encrypt(plaintext, publishKey);
+  }
+  const bundle: LocalEvidenceBundleV2 = {
+    format: "memora.local.bundle",
+    version: 2,
+    manifest: session.manifest,
+    events: session.events,
+    payloads,
+  };
   const serialized = JSON.stringify(bundle);
   return {
     bundle,
     key: publishKey.toString("base64url"),
     byteSize: Buffer.byteLength(serialized),
-    eventCount: events.length,
+    eventCount: session.events.length,
     digest: createHash("sha256").update(serialized).digest("hex"),
   };
 }
@@ -96,16 +150,7 @@ export async function buildPublishArtifact(
   sessionId: string,
   identity: LocalIdentity,
 ): Promise<PublishArtifact> {
-  const manifest = await store.readManifest(sessionId);
-  const events = await store.readEvents(sessionId);
-  const sealedPayloads: Record<string, EncryptedPayloadBundle> = {};
-  for (const event of events) {
-    const objectId = localObjectId(event.commit);
-    sealedPayloads[objectId] = await store.readPayload(sessionId, objectId);
-  }
-  const publishKey = generateAesKey();
-  const payloads = rebuildPayloadsUnderFreshKey(events, sealedPayloads, identity, publishKey);
-  return finalizeArtifact(manifest, events, payloads, publishKey);
+  return finalizePublishArtifact(await decryptPublishSession(store, sessionId, identity));
 }
 
 /**
@@ -114,9 +159,7 @@ export async function buildPublishArtifact(
  * database, just a valid bundle.
  */
 export function buildPublishArtifactFromBundle(bundle: LocalEvidenceBundle, identity: LocalIdentity): PublishArtifact {
-  const publishKey = generateAesKey();
-  const payloads = rebuildPayloadsUnderFreshKey(bundle.events, bundle.payloads, identity, publishKey);
-  return finalizeArtifact(bundle.manifest, bundle.events, payloads, publishKey);
+  return finalizePublishArtifact(decryptPublishBundle(bundle, identity));
 }
 
 export function assertPublishSize(byteSize: number): void {

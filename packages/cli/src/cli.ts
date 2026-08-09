@@ -53,15 +53,16 @@ import {
 import {
   KnownSignerStore,
   assertPublishSize,
-  buildPublishArtifact,
-  buildPublishArtifactFromBundle,
   clearPublishAttempt,
   countFailedHookEntries,
   createPublication,
   daemonLogPath,
+  decryptPublishBundle,
+  decryptPublishSession,
   deletePublication,
   enqueueLocalHook,
   ensurePublishLogin,
+  finalizePublishArtifact,
   getAdapter,
   hookConfigPathFor,
   isDaemonRunning,
@@ -69,6 +70,7 @@ import {
   loadPublishSession,
   mergeMemoraHooks,
   openUrlInBrowser,
+  plaintextsForScan,
   PublishArtifactTooLargeError,
   readDaemonLog,
   readHookConfigFile,
@@ -80,12 +82,13 @@ import {
   runIntegrationDiagnostic,
   runLocalCommand,
   savePublishAttempt,
+  scanForSecrets,
   spawnDaemon,
   summarizeSession,
   writeHookConfigFile,
   type LocalHookProvider,
   type DiagnosticProvider,
-  type PublishArtifact,
+  type DecryptedPublishSession,
 } from "@memora-hq/memora-local";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -247,11 +250,12 @@ function copyToClipboard(text: string): void {
   }
 }
 
-/** Resolves the publish source: an existing bundle file path, or a session ID against the store. */
-async function resolvePublishArtifact(
+/** Resolves the publish source (an existing bundle file path, or a session ID) and decrypts
+ * its payloads — the step just before the secret scan runs, ahead of any encrypt/upload. */
+async function resolveDecryptedSession(
   source: string,
   paths: ReturnType<typeof localPaths>,
-): Promise<{ sessionKey: string; artifact: PublishArtifact }> {
+): Promise<{ sessionKey: string; session: DecryptedPublishSession }> {
   const identity = await paths.keys.load();
   if (!identity) throw new Error("no local identity on this device — run `memora local init` first");
 
@@ -259,14 +263,38 @@ async function resolvePublishArtifact(
   const isBundleFile = await access(asPath, constants.R_OK).then(() => true, () => false);
   if (isBundleFile) {
     const bundle = await readLocalBundle(asPath);
-    return { sessionKey: bundle.manifest.session_id, artifact: buildPublishArtifactFromBundle(bundle, identity) };
+    return { sessionKey: bundle.manifest.session_id, session: decryptPublishBundle(bundle, identity) };
   }
-  return { sessionKey: source, artifact: await buildPublishArtifact(paths.store, source, identity) };
+  return { sessionKey: source, session: await decryptPublishSession(paths.store, source, identity) };
+}
+
+function printScanFindings(findings: ReturnType<typeof scanForSecrets>["findings"]): void {
+  for (const finding of findings) {
+    console.log(`  ${finding.label}`);
+    console.log(`    rule: ${finding.ruleId}    ${finding.preview}`);
+  }
 }
 
 async function cmdLocalPublish(source: string, open: boolean) {
   const paths = localPaths();
-  const { sessionKey, artifact } = await resolvePublishArtifact(source, paths);
+  const { sessionKey, session } = await resolveDecryptedSession(source, paths);
+
+  console.log("Preparing shareable session…");
+  console.log("Scanning for secrets…\n");
+  const scan = scanForSecrets(plaintextsForScan(session));
+
+  if (scan.blocked) {
+    console.log("✗ Possible credentials found\n");
+    printScanFindings(scan.findings.filter((f) => f.severity === "block"));
+    console.log("\nMemora will not publish this session because anyone with the share link");
+    console.log("would be able to decrypt the full artifact.\n");
+    console.log("Nothing was uploaded.\n");
+    console.log("Review the session locally or create a sanitized session before publishing.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const artifact = finalizePublishArtifact(session);
 
   try {
     assertPublishSize(artifact.byteSize);
@@ -279,7 +307,14 @@ async function cmdLocalPublish(source: string, open: boolean) {
     throw error;
   }
 
-  console.log("Preparing shareable session…\n");
+  if (scan.warned) {
+    console.log(`⚠ ${scan.findings.length} possible secret(s) found\n`);
+    printScanFindings(scan.findings);
+    console.log("\nThese may be legitimate values.\n");
+  } else {
+    console.log("✓ Secret scan passed\n");
+  }
+
   console.log(`Session      ${sessionKey}`);
   console.log(`Events       ${artifact.eventCount}`);
   console.log(`Duration     ${formatDuration(artifact.bundle.manifest.started_at, artifact.bundle.manifest.completed_at)}`);
@@ -287,7 +322,7 @@ async function cmdLocalPublish(source: string, open: boolean) {
   console.log("The complete share link is the access credential — anyone who receives it can");
   console.log("view this published session. Forwarding the link forwards access.\n");
 
-  if (!(await confirm("Publish to Memora Cloud?"))) {
+  if (!(await confirm(scan.warned ? "Publish anyway?" : "Publish to Memora Cloud?"))) {
     console.log("Not published.");
     return;
   }
