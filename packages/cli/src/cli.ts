@@ -53,10 +53,16 @@ import {
 import {
   KnownSignerStore,
   enqueueLocalHook,
+  getAdapter,
+  hookConfigPathFor,
+  mergeMemoraHooks,
+  readHookConfigFile,
+  removeMemoraHooks,
   renderReceiptDocument,
   runIntegrationDiagnostic,
   runLocalCommand,
   summarizeSession,
+  writeHookConfigFile,
   type LocalHookProvider,
   type DiagnosticProvider,
 } from "@memora-hq/memora-local";
@@ -207,6 +213,42 @@ async function cmdLocalHook(provider: string) {
   if (!input.trim()) throw new Error("hook JSON is required on stdin");
   const payload = JSON.parse(input) as Record<string, unknown>;
   await enqueueLocalHook(provider as LocalHookProvider, payload);
+}
+
+// The hook command embeds an absolute path to this CLI so agent config files keep working
+// no matter how `memora` was invoked (npx, a global install, a workspace-local bin). This
+// is the CLI's own script path, not a fixed launcher location — there's no dependency on
+// `~/.local/bin/memora` existing.
+function resolveSelfCliPath(): string {
+  return resolve(process.argv[1]);
+}
+
+function requireTerminalAdapter(provider: string): void {
+  const adapter = getAdapter(provider);
+  if (!adapter || adapter.kind !== "terminal") {
+    throw new Error("--provider must be codex or claude");
+  }
+}
+
+async function cmdLocalInstallHooks(provider: string) {
+  requireTerminalAdapter(provider);
+  const paths = localPaths();
+  const configPath = hookConfigPathFor(provider);
+  const existing = await readHookConfigFile(configPath);
+  const merged = mergeMemoraHooks(existing, provider, resolveSelfCliPath(), paths.root);
+  const { backedUp } = await writeHookConfigFile(configPath, merged);
+  if (backedUp) console.log(`✓ Backed up ${configPath}`);
+  console.log(`✓ Installed ${getAdapter(provider)!.displayName} hook`);
+}
+
+async function cmdLocalUninstallHooks(provider: string) {
+  requireTerminalAdapter(provider);
+  const configPath = hookConfigPathFor(provider);
+  const existing = await readHookConfigFile(configPath);
+  const cleaned = removeMemoraHooks(existing);
+  const { backedUp } = await writeHookConfigFile(configPath, cleaned);
+  if (backedUp) console.log(`✓ Backed up ${configPath}`);
+  console.log(`✓ Uninstalled ${getAdapter(provider)!.displayName} hook`);
 }
 
 async function resolveExecutable(command: string): Promise<string | null> {
@@ -1082,6 +1124,8 @@ async function main() {
     console.log("  memora local verify-bundle <path>");
     console.log("  memora local doctor --provider codex|claude [--json]");
     console.log("  memora local hook --provider codex|claude|vscode|cursor  # integration use");
+    console.log("  memora local install-hooks --provider codex|claude");
+    console.log("  memora local uninstall-hooks --provider codex|claude");
     process.exit(1);
   }
 
@@ -1126,6 +1170,14 @@ async function main() {
       const provider = getArg("--provider");
       if (!provider) throw new Error("--provider required");
       await cmdLocalHook(provider);
+    } else if (cmd === "local" && sub === "install-hooks") {
+      const provider = getArg("--provider");
+      if (!provider) throw new Error("--provider required");
+      await cmdLocalInstallHooks(provider);
+    } else if (cmd === "local" && sub === "uninstall-hooks") {
+      const provider = getArg("--provider");
+      if (!provider) throw new Error("--provider required");
+      await cmdLocalUninstallHooks(provider);
     } else if (cmd === "local" && sub === "doctor") {
       await cmdLocalDoctor(getArg("--provider") ?? "codex", hasFlag("--json"));
     } else if (cmd === "write") {

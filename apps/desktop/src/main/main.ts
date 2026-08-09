@@ -13,6 +13,7 @@ import {
   FileKeyProvider,
   KnownSignerStore,
   LocalEvidenceStore,
+  mergeMemoraHooks,
   readLocalBundle,
   renderReceiptDocument,
   runIntegrationDiagnostic,
@@ -21,6 +22,7 @@ import {
   verifyLocalBundle,
   verifyLocalSession,
   type DiagnosticProvider,
+  type HookConfig,
   type IntegrationDiagnosticResult,
   type KnownSigner,
 } from "@memora-hq/memora-local";
@@ -34,7 +36,6 @@ import {
 } from "./bundleView.js";
 import { revealLocalEvent, type LocalDecryptedEventDetail } from "./eventDetail.js";
 import { collectSessionFacts, presentLocalEvent, type LocalEventPresentation } from "./eventPresentation.js";
-import { mergeMemoraHooks, type HookConfig } from "./hookConfig.js";
 import {
   defaultIntegrationSettings,
   isReadingLevel,
