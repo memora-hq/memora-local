@@ -99,10 +99,17 @@ describe("removeMemoraHooks", () => {
     expect(removed.hooks?.Stop?.[0].hooks?.[0].command).toBe("/usr/local/bin/my-hook");
   });
 
-  it("drops event keys entirely once their only hook was Memora's", () => {
+  it("drops the hooks key entirely once nothing but Memora's own hooks remain", () => {
     const merged = mergeMemoraHooks({}, "codex", "/Users/test/.local/bin/memora", "/tmp/Memora");
     const removed = removeMemoraHooks(merged);
-    expect(Object.keys(removed.hooks ?? {})).toEqual([]);
+    expect(removed).toEqual({});
+    expect("hooks" in removed).toBe(false);
+  });
+
+  it("preserves unrelated top-level config keys even when hooks empties out", () => {
+    const merged = mergeMemoraHooks({ model: "sonnet" }, "codex", "/Users/test/.local/bin/memora", "/tmp/Memora");
+    const removed = removeMemoraHooks(merged);
+    expect(removed).toEqual({ model: "sonnet" });
   });
 
   it("is a no-op on a config with no hooks key", () => {

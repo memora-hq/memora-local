@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { access, appendFile, chmod, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -11,18 +12,16 @@ import {
   deriveLocalEncryptionKey,
   exportLocalBundle,
   FileKeyProvider,
+  hookConfigPathFor,
   KnownSignerStore,
   LocalEvidenceStore,
-  mergeMemoraHooks,
   readLocalBundle,
   renderReceiptDocument,
   runIntegrationDiagnostic,
-  startLocalHookSpool,
   summarizeSession,
   verifyLocalBundle,
   verifyLocalSession,
   type DiagnosticProvider,
-  type HookConfig,
   type IntegrationDiagnosticResult,
   type KnownSigner,
 } from "@memora-hq/memora-local";
@@ -55,13 +54,8 @@ const integrationsPath = join(dataRoot, "integrations.json");
 const shellIntegrationPath = join(homedir(), ".config", "memora", "shell.zsh");
 const activeDataRootPath = join(homedir(), ".config", "memora", "data-root");
 const zshrcPath = join(homedir(), ".zshrc");
-const codexHooksPath = join(homedir(), ".codex", "hooks.json");
-const claudeSettingsPath = join(homedir(), ".claude", "settings.json");
 const cliLauncherTarget = join(homedir(), ".local", "bin", "memora");
 
-// Desktop/Electron-specific paths for each terminal adapter's hook config file — these live
-// under the user's home directory and aren't part of the portable registry from Task 1.
-const hookConfigPaths: Record<string, string> = { codex: codexHooksPath, claude: claudeSettingsPath };
 const terminalAdapters = adapters.filter((adapter) => adapter.kind === "terminal");
 const editorAdapters = adapters.filter((adapter) => adapter.kind === "editor");
 const adapterIds = new Set(adapters.map((adapter) => adapter.id));
@@ -71,11 +65,17 @@ const terminalAgents: Record<TerminalAgentId, { command: string; label: string }
   terminalAdapters.map((adapter) => [adapter.id, { command: adapter.id, label: adapter.displayName }]),
 );
 
-async function installCliLauncher(): Promise<{ target: string; pathHint: string }> {
-  const target = cliLauncherTarget;
-  const cli = app.isPackaged
+// The CLI script desktop bundles and shells out to — for hook install/uninstall (below) and
+// for the `~/.local/bin/memora` launcher it writes for terminal convenience.
+function resolveCliScriptPath(): string {
+  return app.isPackaged
     ? join(process.resourcesPath, "cli", "cli.js")
     : join(app.getAppPath(), "..", "..", "packages", "cli", "dist", "cli.js");
+}
+
+async function installCliLauncher(): Promise<{ target: string; pathHint: string }> {
+  const target = cliLauncherTarget;
+  const cli = resolveCliScriptPath();
 
   await access(cli, constants.R_OK);
   await mkdir(dirname(target), { recursive: true });
@@ -91,25 +91,43 @@ async function installCliLauncher(): Promise<{ target: string; pathHint: string 
   return { target, pathHint: join(homedir(), ".local", "bin") };
 }
 
-async function readJsonConfig(path: string): Promise<HookConfig> {
-  try { return JSON.parse(await readFile(path, "utf8")) as HookConfig; } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
-    throw new Error(`Cannot read ${path}: ${(error as Error).message}`);
-  }
+// Only one process should ever write hook config — desktop shells out to the CLI's own
+// install-hooks/uninstall-hooks rather than merging hook config itself, so there's a single
+// implementation (and a single embedded CLI path) regardless of which surface triggered it.
+function runCli(args: string[]): Promise<void> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(process.execPath, [resolveCliScriptPath(), ...args], {
+      env: { ...process.env, MEMORA_LOCAL_DATA_DIR: dataRoot, ELECTRON_RUN_AS_NODE: "1" },
+    });
+    let stderr = "";
+    child.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolvePromise();
+      else reject(new Error(stderr.trim() || `memora ${args.join(" ")} exited with code ${code}`));
+    });
+  });
 }
 
-async function installLifecycleHooks(selected: TerminalAgentId[]): Promise<{ codex_review_required: boolean; installed: TerminalAgentId[] }> {
+async function installLifecycleHooks(
+  selected: TerminalAgentId[],
+  previouslyInstalled: TerminalAgentId[],
+): Promise<{ codex_review_required: boolean; installed: TerminalAgentId[]; uninstalled: TerminalAgentId[] }> {
   const installed: TerminalAgentId[] = [];
+  const uninstalled: TerminalAgentId[] = [];
   for (const adapter of terminalAdapters) {
-    if (!selected.includes(adapter.id)) continue;
-    const path = hookConfigPaths[adapter.id];
-    if (!path) continue;
-    const config = mergeMemoraHooks(await readJsonConfig(path), adapter.id, cliLauncherTarget, dataRoot);
-    await mkdir(dirname(path), { recursive: true, mode: 0o700 });
-    await writeFile(path, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-    installed.push(adapter.id);
+    const id = adapter.id as TerminalAgentId;
+    if (selected.includes(id)) {
+      await runCli(["local", "install-hooks", "--provider", id]);
+      installed.push(id);
+    } else if (previouslyInstalled.includes(id)) {
+      // Only uninstall adapters we previously installed — calling uninstall-hooks for a
+      // provider that was never configured would needlessly create its hook config file.
+      await runCli(["local", "uninstall-hooks", "--provider", id]);
+      uninstalled.push(id);
+    }
   }
-  return { codex_review_required: selected.includes("codex"), installed };
+  return { codex_review_required: selected.includes("codex"), installed, uninstalled };
 }
 
 async function installEditorAdapters(selected: IntegrationId[]): Promise<{ installed: string[] }> {
@@ -173,7 +191,7 @@ async function diagnoseIntegration(provider: DiagnosticProvider): Promise<Integr
     provider,
     dataRoot,
     cliPath: cliLauncherTarget,
-    hookConfigPath: hookConfigPaths[provider],
+    hookConfigPath: hookConfigPathFor(provider),
     runtimeCandidates,
     cwd: app.getAppPath(),
   });
@@ -213,11 +231,12 @@ async function writeShellIntegration(selected: TerminalAgentId[]): Promise<{ res
 async function configureIntegrations(selected: IntegrationId[]) {
   const normalized = [...new Set(selected)].filter((id): id is IntegrationId => adapterIds.has(id));
   const terminal = normalized.filter((id): id is TerminalAgentId => id in terminalAgents);
+  const previouslyInstalled = (await readIntegrationSettings()).automatic_terminal_agents;
   await installCliLauncher();
   await mkdir(dirname(activeDataRootPath), { recursive: true, mode: 0o700 });
   await writeFile(activeDataRootPath, `${dataRoot}\n`, { mode: 0o600 });
   const shell = await writeShellIntegration(terminal);
-  const lifecycle = await installLifecycleHooks(terminal);
+  const lifecycle = await installLifecycleHooks(terminal, previouslyInstalled);
   const editors = await installEditorAdapters(normalized);
   await writeIntegrationSettings({
     onboarding_complete: true,
@@ -448,8 +467,10 @@ async function createWindow(): Promise<void> {
   else await window.loadFile(join(here, "..", "dist-renderer", "index.html"));
 }
 
+// No startLocalHookSpool() here: the daemon owns draining hook events into the local
+// evidence store (autostarted on first hook fire), independent of whether desktop is
+// running. Desktop draining too would race it across processes.
 app.whenReady().then(async () => {
-  await startLocalHookSpool(dataRoot);
   registerIpc();
   await createWindow();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });

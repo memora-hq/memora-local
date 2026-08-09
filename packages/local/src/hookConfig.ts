@@ -76,6 +76,12 @@ export function removeMemoraHooks(config: HookConfig): HookConfig {
     const remaining = groups.filter((group) => !(group.hooks ?? []).some((handler) => isMemoraHandler(handler.command)));
     if (remaining.length > 0) hooks[event] = remaining;
   }
+  // Drop the `hooks` key entirely once nothing's left under it, rather than leaving a
+  // stray `"hooks": {}` in a config file that may never have had a hooks key at all.
+  if (Object.keys(hooks).length === 0) {
+    const { hooks: _dropped, ...rest } = config;
+    return rest;
+  }
   return { ...config, hooks };
 }
 

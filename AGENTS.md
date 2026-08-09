@@ -19,13 +19,30 @@ imports source from directly.
   `@memora-hq/memora-local` and are the reason this CLI is a separate, heavier package rather
   than something `memora-sdk` ships.
 - `apps/desktop` — Electron app. Bundles `packages/cli`'s built output as an `extraResource`
-  and installs it as the `memora` launcher at `~/.local/bin/memora`; editor/agent hooks
-  (`hookConfig.ts`) and VS Code/Cursor (`apps/vscode-extension`) both shell out to that
-  launcher rather than importing `packages/local` directly.
+  and installs it as the `memora` launcher at `~/.local/bin/memora`. Hook install/uninstall
+  and VS Code/Cursor (`apps/vscode-extension`) shell out to the bundled CLI rather than
+  writing hook config or draining the hook spool itself — see "Frozen status" below.
 - `apps/vscode-extension` — thin (`extension.cjs`, CommonJS, no dependencies at all): spawns
   the installed `memora` CLI on editor lifecycle events. If you're tempted to give it a real
   dependency on `packages/local`, don't — the whole point of routing through the CLI binary is
   that the extension's sandboxed renderer-adjacent process never needs Node-native modules.
+
+## `apps/desktop`: frozen status
+
+`apps/desktop` is frozen for the beta wedge, not deleted — no new feature work during this
+period. It stays in the workspace and CI keeps building it on every PR unchanged; that green
+build is the guarantee it doesn't silently rot while frozen. It exists to keep working and
+support existing users, not to gain functionality.
+
+Concretely:
+- Hook install/uninstall is delegated to the CLI's `memora local install-hooks`/
+  `uninstall-hooks --provider <x>` (desktop shells out to its bundled CLI rather than merging
+  hook config itself — only one process ever writes hook config).
+- Hook-spool draining is delegated to the daemon (`memora daemon start`, autostarted on the
+  first hook fire) — desktop does not call `startLocalHookSpool` itself, since draining
+  independently would race the daemon across processes.
+- Desktop still writes its own `~/.local/bin/memora` launcher (`installCliLauncher`), kept for
+  terminal convenience, independent of the CLI no longer requiring that path itself.
 
 ## What must never happen in this repo
 
