@@ -17,7 +17,7 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.6",
     "@fontsource/ibm-plex-sans": "^5.2.6",
-    "@memora-hq/memora-local-cli": "workspace:*",
+    "memora-local": "workspace:*",
     "@memora-hq/memora-local": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
     "@memora-hq/memora-protocol": "0.1.0-rc.2",
@@ -46,7 +46,9 @@
       "dist-renderer/**",
       "package.json",
       "!node_modules/@memora-hq/*/src/**",
-      "!node_modules/@memora-hq/*/tsconfig.json"
+      "!node_modules/@memora-hq/*/tsconfig.json",
+      "!node_modules/memora-local/src/**",
+      "!node_modules/memora-local/tsconfig.json"
     ],
     "extraResources": [
       { "from": "../../packages/cli/dist", "to": "cli" },

@@ -6,7 +6,7 @@ verifiable evidence that [`@memora-hq/memora-verifier`](https://github.com/memor
 checks.
 
 Most people don't install this directly — it arrives as a dependency of
-[`@memora-hq/memora-local-cli`](../cli) or the desktop app. Install it yourself only if you're
+[the `memora-local` CLI](../cli) or the desktop app. Install it yourself only if you're
 building your own capture surface on top of the same evidence format.
 
 ## What's in here

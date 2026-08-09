@@ -2,7 +2,7 @@
 
 ## Scope
 
-This policy covers `@memora-hq/memora-local`, `@memora-hq/memora-local-cli`, the desktop app
+This policy covers `@memora-hq/memora-local`, the `memora-local` CLI, the desktop app
 (`apps/desktop`), and the VS Code/Cursor extension (`apps/vscode-extension`) in this
 repository. It does not cover Memora's hosted service (that's `memora-cloud`) or the
 verification logic in `@memora-hq/memora-verifier` / the client SDK (that's `memora-sdk`) —

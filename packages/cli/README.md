@@ -1,4 +1,4 @@
-# @memora-hq/memora-local-cli
+# memora-local
 
 Full terminal surface for writing, reading, inspecting, verifying, and **capturing** Memora
 execution records. This is the heavier sibling of

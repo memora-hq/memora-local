@@ -19,15 +19,15 @@ importers:
       '@memora-hq/memora-local':
         specifier: workspace:*
         version: link:../../packages/local
-      '@memora-hq/memora-local-cli':
-        specifier: workspace:*
-        version: link:../../packages/cli
       '@memora-hq/memora-protocol':
         specifier: 0.1.0-rc.2
         version: 0.1.0-rc.2
       '@phosphor-icons/react':
         specifier: ^2.1.10
         version: 2.1.10(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      memora-local:
+        specifier: workspace:*
+        version: link:../../packages/cli
       react:
         specifier: ^18.2.0
         version: 18.3.1

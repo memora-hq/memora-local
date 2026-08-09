@@ -1,7 +1,7 @@
 {
-  "name": "@memora-hq/memora-local-cli",
+  "name": "memora-local",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "license": "Apache-2.0",
   "type": "module",
   "bin": { "memora": "dist/cli.js" },
@@ -28,5 +28,19 @@
     "@types/node": "^20.0.0",
     "typescript": "^5.3.0",
     "vitest": "^1.2.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "description": "Memora: verifiable execution history for local AI agents. `npx memora-local` — capture, verify, and share agent sessions.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/memora-hq/memora-local.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

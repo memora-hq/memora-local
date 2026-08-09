@@ -10,9 +10,9 @@ its own name and release cadence:
 | Package | Published as | What it is |
 |---|---|---|
 | [`packages/local`](./packages/local) | `@memora-hq/memora-local` | The evidence engine: PTY-based session capture, on-disk store, receipts, editor/agent hook integration. |
-| [`packages/cli`](./packages/cli) | `@memora-hq/memora-local-cli` | The full `memora` CLI — every command in [`memora-sdk`](https://github.com/memora-hq/memora-sdk)'s CLI, plus `local run`/`receipt`/`hook`/`doctor`. |
-| [`apps/desktop`](./apps/desktop) | — (not published; distributed as a signed `.dmg`) | The Electron desktop app: session timeline, receipt viewer, editor/agent hook setup. |
-| [`apps/vscode-extension`](./apps/vscode-extension) | `memora-local` (VS Code Marketplace, unrelated npm-style name collision, pre-existing) | Emits hook events from VS Code / Cursor by shelling out to the installed `memora` CLI. |
+| [`packages/cli`](./packages/cli) | `memora-local` (npm, unscoped) | The full `memora` CLI — `npx memora-local`. Every command in [`memora-sdk`](https://github.com/memora-hq/memora-sdk)'s CLI, plus `local run`/`local publish`/`daemon`/`receipt`/`hook`/`doctor`. |
+| [`apps/desktop`](./apps/desktop) | — (not published; distributed as a signed `.dmg`) | The Electron desktop app: session timeline, receipt viewer, editor/agent hook setup. Frozen for the beta, not deleted — see `AGENTS.md`. |
+| [`apps/vscode-extension`](./apps/vscode-extension) | `memora-local` (VS Code Marketplace) | **Dropped from the beta wedge**, not migrated (see `AGENTS.md`). Its `package.json` name also happens to be `memora-local` — same string as `packages/cli`'s npm name, but a different registry (VS Code Marketplace, not npm) so there's no real publish collision. Inside *this* pnpm workspace the two do share an identical package name; nothing currently filters or depends on it by that name after `typecheck:vscode-extension` was removed, but be aware before adding one. |
 
 ## Why this repo, separate from the SDK
 
@@ -27,12 +27,15 @@ here can (and does) depend on `node-pty` and Electron.
 ## Get started
 
 ```bash
-npm install -g @memora-hq/memora-local-cli   # not yet published — see AGENTS.md
-memora local init
+npx memora-local local init
 memora local run -- pnpm test                # capture a live session
 memora local verify <session-id>             # verify it, offline
 memora local export <session-id> --out evidence.memora
+memora local publish <session-id>            # scan, confirm, and share a link
 ```
+
+(`npx memora-local` installs the `memora` binary for the invocation; `npm install -g memora-local`
+works too if you want it on PATH persistently.)
 
 Or install the desktop app for a GUI over the same data — session timeline, receipt
 generation, and one-click editor/agent hook setup for Claude Code, Codex, Cursor, and VS Code.

@@ -36,9 +36,6 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Typecheck vscode-extension
-        run: pnpm run typecheck:vscode-extension
-
       - name: Build desktop
         run: pnpm run desktop:build
 

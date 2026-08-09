@@ -1,6 +1,6 @@
 # Contributing
 
-`memora-local` (`@memora-hq/memora-local`, `@memora-hq/memora-local-cli`, the desktop app, and
+`memora-local` (`@memora-hq/memora-local`, the `memora-local` CLI, the desktop app, and
 the VS Code/Cursor extension) is an open-source developer preview under Apache 2.0.
 Contributions are welcome — bug fixes, documentation improvements, editor/agent integration
 support, and desktop app ergonomics all help.

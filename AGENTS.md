@@ -14,8 +14,9 @@ imports source from directly.
   whether an editor/agent integration is wired up correctly. It depends on
   `@memora-hq/memora-verifier` (from `memora-sdk`, published on npm) for bundle/session
   verification rather than reimplementing it.
-- `packages/cli` (`@memora-hq/memora-local-cli`) — the full `memora` binary: every command
-  `memora-sdk`'s CLI has, plus `local run`/`receipt`/`hook`/`doctor`, which need
+- `packages/cli` (published to npm as unscoped `memora-local`, per constraint 7 — `npx
+  memora-local`) — the full `memora` binary: every command `memora-sdk`'s CLI has, plus `local
+  run`/`local publish`/`local install-hooks`/`daemon`/`receipt`/`hook`/`doctor`, which need
   `@memora-hq/memora-local` and are the reason this CLI is a separate, heavier package rather
   than something `memora-sdk` ships.
 - `apps/desktop` — Electron app. Bundles `packages/cli`'s built output as an `extraResource`
@@ -67,10 +68,20 @@ versions, not resolvable from a truly clean external clone until that publish ha
 
 ## Naming note
 
-`apps/vscode-extension`'s own `package.json` name is `"memora-local"` (unscoped, VS Code
-Marketplace convention) — this predates the repo split and is an unrelated namespace from the
-scoped npm packages (`@memora-hq/memora-local`, etc.) above. Don't conflate the two when
-searching for "memora-local" in either context.
+Three different things are all called "memora-local" and none of them are the same package:
+
+1. This repo's name (`memora-local`, the git repo / `pnpm-workspace.yaml` root).
+2. `packages/cli`'s npm package name (`memora-local`, unscoped — `npx memora-local`, per
+   constraint 7).
+3. `apps/vscode-extension`'s `package.json` name (`memora-local`, VS Code Marketplace
+   convention, predates the repo split).
+
+(2) and (3) are published to different registries (npm vs. VS Code Marketplace), so there's no
+real publish collision — but **within this pnpm workspace they are two packages with the
+identical package.json name**, which broke `pnpm --filter memora-local` (it silently matched
+both). That's why the old `typecheck:vscode-extension` script/CI step is gone — it used to
+filter by that name. If you need to target `packages/cli` specifically in a pnpm command, filter
+by path (`--filter ./packages/cli`), not by name.
 
 ## What does NOT belong in this repo
 
