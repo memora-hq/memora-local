@@ -1,16 +1,27 @@
 import process from "node:process";
 import { access } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { delimiter, isAbsolute, join } from "node:path";
 import { spawn as spawnProcess } from "node:child_process";
 import type { LocalSession } from "@memora-hq/memora-verifier";
 import { diffSnapshots, snapshotProject } from "./capture.js";
+import { ensureExecutable, spawnHelperPathFor } from "./ptyHelper.js";
+
+const require = createRequire(import.meta.url);
 
 // Loaded lazily, not as a top-level import: node-pty is a native addon, and merely importing
 // this module (which most CLI commands do transitively, since it's part of the package's
 // index barrel) must never touch it. On an unsupported platform, or one where the optional
 // dependency failed to install, this throws and the caller falls back to plain pipe capture.
+//
+// Self-heals node-pty's macOS spawn-helper losing its executable bit during npm/pnpm install
+// (see ptyHelper.ts) before ever calling pty.spawn() — if this fails or isn't applicable, the
+// caller's existing try/catch around pty.spawn() still degrades to the plain-pipe fallback.
 async function loadPty(): Promise<typeof import("node-pty")> {
-  return import("node-pty");
+  const pty = await import("node-pty");
+  const helperPath = spawnHelperPathFor(require.resolve("node-pty/package.json"), process.platform, process.arch);
+  if (helperPath) await ensureExecutable(helperPath);
+  return pty;
 }
 
 export interface RunLocalCommandOptions {
