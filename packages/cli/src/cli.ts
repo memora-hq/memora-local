@@ -46,6 +46,7 @@ import {
   getOrCreateIdentity,
   verifySession,
   verifyBundle,
+  deriveLocalEncryptionKey,
 } from "@memora-hq/memora-verifier";
 // Live session capture (PTY), receipts, hook integration, and diagnostics — this is
 // the reason this CLI exists as a separate, heavier package from memora-sdk's:
@@ -60,6 +61,7 @@ import {
   decryptPublishBundle,
   decryptPublishSession,
   deletePublication,
+  ensureSearchIndexUpToDate,
   enqueueLocalHook,
   ensurePublishLogin,
   evaluateGuardrail,
@@ -87,6 +89,7 @@ import {
   runLocalCommand,
   savePublishAttempt,
   scanForSecrets,
+  SearchIndexStore,
   spawnDaemon,
   summarizeSession,
   unsupportedPlatformMessage,
@@ -167,6 +170,59 @@ async function cmdLocalShow(sessionId: string) {
   console.log(`${manifest.session_id} · ${manifest.capture_status} · ${manifest.event_ids.length} events`);
   for (const event of events) {
     console.log(`${event.observed_at}\t${event.source}\t${event.commit.event_type ?? "event"}\t${event.commit.event_id}`);
+  }
+}
+
+function snippetAround(text: string, index: number, matchLength: number, radius = 40): string {
+  const start = Math.max(0, index - radius);
+  const end = Math.min(text.length, index + matchLength + radius);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < text.length ? "…" : "";
+  return `${prefix}${text.slice(start, end)}${suffix}`;
+}
+
+interface LocalSearchResult {
+  session_id: string;
+  event_id: string;
+  event_type: string;
+  observed_at: string;
+  snippet: string;
+}
+
+async function cmdLocalSearch(query: string, json: boolean, limit: number) {
+  const paths = localPaths();
+  const identity = await paths.keys.load();
+  if (!identity) throw new Error("no local identity on this device — run `memora local init` first");
+  const key = deriveLocalEncryptionKey(identity);
+  const indexStore = new SearchIndexStore(paths.root, key);
+  const needle = query.toLowerCase();
+  const results: LocalSearchResult[] = [];
+
+  for (const manifest of await paths.store.listSessions()) {
+    if (results.length >= limit) break;
+    const events = await paths.store.readEvents(manifest.session_id);
+    const index = await ensureSearchIndexUpToDate(paths.store, indexStore, manifest.session_id, events);
+    for (const entry of index.entries) {
+      if (results.length >= limit) break;
+      const matchIndex = entry.searchable_text.toLowerCase().indexOf(needle);
+      if (matchIndex === -1) continue;
+      results.push({
+        session_id: manifest.session_id,
+        event_id: entry.event_id,
+        event_type: entry.event_type,
+        observed_at: entry.observed_at,
+        snippet: snippetAround(entry.searchable_text, matchIndex, needle.length),
+      });
+    }
+  }
+
+  if (json) {
+    console.log(JSON.stringify(results, null, 2));
+    return;
+  }
+  if (!results.length) { console.log("No matches."); return; }
+  for (const result of results) {
+    console.log(`${result.session_id}\t${result.event_type}\t${result.observed_at}\t${result.snippet}`);
   }
 }
 
@@ -1508,6 +1564,13 @@ async function main() {
       await cmdLocalUninstallHooks(provider);
     } else if (cmd === "local" && sub === "doctor") {
       await cmdLocalDoctor(getArg("--provider") ?? "codex", hasFlag("--json"));
+    } else if (cmd === "local" && sub === "search") {
+      const query = args[2];
+      if (!query) throw new Error("<query> required");
+      const limitArg = getArg("--limit");
+      const limit = limitArg ? Number(limitArg) : 50;
+      if (!Number.isInteger(limit) || limit <= 0) throw new Error("--limit must be a positive integer");
+      await cmdLocalSearch(query, hasFlag("--json"), limit);
     } else if (cmd === "daemon" && sub === "start") {
       await cmdDaemonStart();
     } else if (cmd === "daemon" && sub === "stop") {
