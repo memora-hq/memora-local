@@ -62,13 +62,16 @@ import {
   deletePublication,
   enqueueLocalHook,
   ensurePublishLogin,
+  evaluateGuardrail,
   finalizePublishArtifact,
   getAdapter,
   hookConfigPathFor,
+  isGuardrailApplicable,
   isSupportedPlatform,
   isDaemonRunning,
   loadPublishAttempt,
   loadPublishSession,
+  loadRuleSet,
   mergeMemoraHooks,
   openUrlInBrowser,
   plaintextsForScan,
@@ -91,6 +94,7 @@ import {
   type LocalHookProvider,
   type DiagnosticProvider,
   type DecryptedPublishSession,
+  type GuardrailDecision,
 } from "@memora-hq/memora-local";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
@@ -437,6 +441,21 @@ async function cmdLocalHook(provider: string) {
   for await (const chunk of process.stdin) input += chunk.toString();
   if (!input.trim()) throw new Error("hook JSON is required on stdin");
   const payload = JSON.parse(input) as Record<string, unknown>;
+
+  const guardrailDisabled = Boolean(process.env.MEMORA_GUARDRAIL_DISABLED);
+  const guardrailApplicable = isGuardrailApplicable(provider, payload, guardrailDisabled);
+  // Explicit annotation matters here: without it, TS infers the ternary's type as the union of
+  // GuardrailDecision and the bare `{ outcome: "allow" }` literal, and later `decision.rule`
+  // access fails to typecheck because that literal type (not GuardrailDecision) has no `rule`
+  // property at all, even though `rule` is optional on GuardrailDecision.
+  const decision: GuardrailDecision = guardrailApplicable
+    ? await evaluateGuardrail(payload, await loadRuleSet())
+    : { outcome: "allow" };
+
+  if (guardrailApplicable) {
+    payload.memora_guardrail_decision = decision.outcome;
+    if (decision.rule) payload.memora_guardrail_rule_id = decision.rule.id;
+  }
   await enqueueLocalHook(provider as LocalHookProvider, payload);
 
   // Purely local plumbing: this drains /tmp hook events into the local evidence store. It
@@ -448,6 +467,16 @@ async function cmdLocalHook(provider: string) {
     }
   } catch (error) {
     console.error(`[memora] daemon autostart failed: ${(error as Error).message}`);
+  }
+
+  if (decision.outcome === "hard_block" || decision.outcome === "ask_denied") {
+    console.log(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "deny",
+        permissionDecisionReason: decision.denyReason,
+      },
+    }));
   }
 }
 

@@ -27,3 +27,4 @@ export * from "./rules/normalize.js";
 export * from "./dialog/macDialogScript.js";
 export * from "./dialog/windowsDialogScript.js";
 export * from "./dialog/approvalDialog.js";
+export * from "./rules/guardrail.js";
