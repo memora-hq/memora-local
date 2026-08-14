@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, rmdir, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { getAdapter } from "./adapters/registry.js";
-import { FileKeyProvider, getOrCreateIdentity, LocalSession, LocalEvidenceStore } from "@memora-hq/memora-verifier";
+import { FileKeyProvider, getOrCreateIdentity, LocalSession, LocalEvidenceStore, deriveLocalEncryptionKey } from "@memora-hq/memora-verifier";
+import { buildSearchIndexEntry, SearchIndexStore } from "./searchIndex.js";
 
 export type LocalHookProvider = string;
 
@@ -76,7 +77,20 @@ export async function ingestLocalHook(
     }
 
     const hookEvent = typeof input.hook_event_name === "string" ? input.hook_event_name : "event";
-    const eventId = await session.record(eventType(provider, hookEvent), evidenceContent(provider, input), "adapter_reported");
+    const type = eventType(provider, hookEvent);
+    const content = evidenceContent(provider, input);
+    const eventId = await session.record(type, content, "adapter_reported");
+    try {
+      const key = deriveLocalEncryptionKey(identity);
+      await new SearchIndexStore(dataRoot, key).append(
+        localSessionId,
+        buildSearchIndexEntry(type, new Date().toISOString(), eventId, content),
+      );
+    } catch {
+      // Best-effort: a search-index failure must never break evidence capture, which is the
+      // load-bearing path here. ensureSearchIndexUpToDate backfills any entry missed this way
+      // the next time `local search` runs.
+    }
     await session.checkpoint("partial");
     return { localSessionId, eventId };
   });

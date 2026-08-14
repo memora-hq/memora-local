@@ -11,10 +11,12 @@ import {
   exportLocalBundle,
   readLocalBundle,
   verifyBundle,
+  deriveLocalEncryptionKey,
 } from "@memora-hq/memora-verifier";
 import { diffSnapshots, snapshotProject } from "./capture.js";
 import { ingestLocalHook } from "./hookAdapter.js";
 import { enqueueLocalHook, startLocalHookSpool } from "./hookTransport.js";
+import { SearchIndexStore } from "./searchIndex.js";
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), "memora-local-"));
@@ -98,6 +100,21 @@ describe("Memora Local evidence", () => {
       "tool_completed",
     ]);
     expect((await verifySession(store, first.localSessionId)).valid).toBe(true);
+  });
+
+  it("incrementally indexes hook events for search as they're ingested", async () => {
+    const root = await mkdtemp(join(tmpdir(), "memora-search-incremental-"));
+    const result = await ingestLocalHook(root, "codex", {
+      session_id: "codex-session-search",
+      hook_event_name: "PostToolUse",
+      cwd: root,
+      tool_name: "apply_patch",
+      tool_input: { command: "*** Update File: secret-marker-xyz.ts" },
+    });
+    const identity = await getOrCreateIdentity(new FileKeyProvider(join(root, "identity", "local-key.json")));
+    const key = deriveLocalEncryptionKey(identity);
+    const index = await new SearchIndexStore(root, key).read(result.localSessionId);
+    expect(index.entries.some((entry) => entry.searchable_text.includes("secret-marker-xyz.ts"))).toBe(true);
   });
 
   it("accepts sandbox-friendly hook delivery through a private spool", async () => {
