@@ -22,3 +22,5 @@ export * from "./rules/schema.js";
 export * from "./rules/engine.js";
 export * from "./rules/defaults.js";
 export * from "./rules/loader.js";
+export * from "./rules/patchParser.js";
+export * from "./rules/normalize.js";
