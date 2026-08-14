@@ -487,12 +487,8 @@ export function showMacDialog(request: ApprovalRequest): Promise<ApprovalOutcome
 ```typescript
 // packages/local/src/dialog/windowsDialog.ts
 import { spawn } from "node:child_process";
-import {
-  buildWindowsDialogScript,
-  parseWindowsDialogExitCode,
-  type ApprovalOutcome,
-  type ApprovalRequest,
-} from "./windowsDialogScript.js";
+import { buildWindowsDialogScript, parseWindowsDialogExitCode } from "./windowsDialogScript.js";
+import type { ApprovalOutcome, ApprovalRequest } from "./macDialogScript.js";
 
 const TIMEOUT_MS = 60_000;
 
