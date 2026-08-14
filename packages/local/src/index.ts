@@ -24,3 +24,6 @@ export * from "./rules/defaults.js";
 export * from "./rules/loader.js";
 export * from "./rules/patchParser.js";
 export * from "./rules/normalize.js";
+export * from "./dialog/macDialogScript.js";
+export * from "./dialog/windowsDialogScript.js";
+export * from "./dialog/approvalDialog.js";
