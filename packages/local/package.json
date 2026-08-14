@@ -17,7 +17,8 @@
   ],
   "dependencies": {
     "@memora-hq/memora-protocol": "0.1.0-rc.2",
-    "@memora-hq/memora-verifier": "0.1.0"
+    "@memora-hq/memora-verifier": "0.1.0",
+    "yaml": "^2.4.0"
   },
   "optionalDependencies": {
     "node-pty": "^1.1.0"
