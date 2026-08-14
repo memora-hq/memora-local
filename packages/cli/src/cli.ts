@@ -562,7 +562,7 @@ async function cmdLocalDoctor(provider: string, json: boolean) {
   const result = await runIntegrationDiagnostic({
     provider: selected,
     dataRoot: paths.root,
-    cliPath: join(homedir(), ".local", "bin", "memora"),
+    cliPath: resolveSelfCliPath(),
     hookConfigPath: selected === "codex"
       ? join(homedir(), ".codex", "hooks.json")
       : join(homedir(), ".claude", "settings.json"),
