@@ -1,9 +1,10 @@
 import { describe, expect, it, afterEach, vi } from "vitest";
 import { mkdtemp, readFile, rm, writeFile, stat } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { join } from "node:path";
 import { defaultRulesPath, loadRuleSet } from "./loader.js";
 import { defaultRules } from "./defaults.js";
+import { evaluateAction } from "./engine.js";
 
 describe("loadRuleSet", () => {
   let dir: string;
@@ -101,5 +102,16 @@ describe("loadRuleSet", () => {
     const ruleSet = await loadRuleSet(path);
     expect(ruleSet.rules).toEqual(defaultRules);
     expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it("scaffolded defaults hard_block writes to rules.yaml itself and to the config dir, but not unrelated paths", () => {
+    const ruleSet = { rules: defaultRules };
+    const rulesPath = join(homedir(), ".config", "memora", "rules.yaml");
+    const otherConfigFile = join(homedir(), ".config", "memora", "other-file.json");
+    const unrelatedPath = join(homedir(), "project", "README.md");
+
+    expect(evaluateAction(ruleSet, { category: "file_write", subject: rulesPath }).tier).toBe("hard_block");
+    expect(evaluateAction(ruleSet, { category: "file_write", subject: otherConfigFile }).tier).toBe("hard_block");
+    expect(evaluateAction(ruleSet, { category: "file_write", subject: unrelatedPath }).tier).toBe("allow");
   });
 });
