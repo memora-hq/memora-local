@@ -92,6 +92,7 @@ import {
   SearchIndexStore,
   spawnDaemon,
   summarizeSession,
+  uninstallShellIntegration,
   unsupportedPlatformMessage,
   writeHookConfigFile,
   type LocalHookProvider,
@@ -572,6 +573,20 @@ async function cmdLocalUninstallHooks(provider: string) {
   console.log(`✓ Uninstalled ${getAdapter(provider)!.displayName} hook`);
 }
 
+async function cmdLocalUninstallShellIntegration() {
+  const wrapperPath = join(homedir(), ".config", "memora", "shell.zsh");
+  const rcPath = join(homedir(), ".zshrc");
+  const result = await uninstallShellIntegration({ wrapperPath, rcPath });
+  if (!result.rcUpdated && !result.wrapperFileDisabled) {
+    console.log("No shell integration found — nothing to remove.");
+    return;
+  }
+  if (result.rcBackedUp) console.log(`✓ Backed up ${rcPath}`);
+  if (result.rcUpdated) console.log(`✓ Removed the Memora shell wrapper from ${rcPath}`);
+  if (result.wrapperFileDisabled) console.log(`✓ Disabled ${wrapperPath}`);
+  console.log("Open a new terminal (or restart your shell) for this to take effect.");
+}
+
 async function cmdDaemonStart() {
   const paths = localPaths();
   const status = await isDaemonRunning();
@@ -653,6 +668,7 @@ async function cmdLocalDoctor(provider: string, json: boolean) {
       : join(homedir(), ".claude", "settings.json"),
     runtimeCandidates,
     cwd: process.cwd(),
+    shellWrapperPath: join(homedir(), ".config", "memora", "shell.zsh"),
   });
   if (json) {
     console.log(JSON.stringify(result, null, 2));
@@ -1502,6 +1518,7 @@ async function main() {
     console.log("  memora local hook --provider codex|claude|vscode|cursor  # integration use");
     console.log("  memora local install-hooks --provider codex|claude");
     console.log("  memora local uninstall-hooks --provider codex|claude");
+    console.log("  memora local uninstall-shell-integration");
     console.log("  memora daemon start|stop|status|logs");
     process.exit(1);
   }
@@ -1562,6 +1579,8 @@ async function main() {
       const provider = getArg("--provider");
       if (!provider) throw new Error("--provider required");
       await cmdLocalUninstallHooks(provider);
+    } else if (cmd === "local" && sub === "uninstall-shell-integration") {
+      await cmdLocalUninstallShellIntegration();
     } else if (cmd === "local" && sub === "doctor") {
       await cmdLocalDoctor(getArg("--provider") ?? "codex", hasFlag("--json"));
     } else if (cmd === "local" && sub === "search") {

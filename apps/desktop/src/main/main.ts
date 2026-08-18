@@ -192,6 +192,7 @@ async function diagnoseIntegration(provider: DiagnosticProvider): Promise<Integr
     dataRoot,
     cliPath: cliLauncherTarget,
     hookConfigPath: hookConfigPathFor(provider),
+    shellWrapperPath: shellIntegrationPath,
     runtimeCandidates,
     cwd: app.getAppPath(),
   });

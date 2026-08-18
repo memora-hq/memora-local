@@ -6,13 +6,14 @@ import { join } from "node:path";
 import { startLocalHookSpool } from "./hookTransport.js";
 import { LocalEvidenceStore, verifySession, FileKeyProvider } from "@memora-hq/memora-verifier";
 import { getAdapter } from "./adapters/registry.js";
+import { shellIntegrationWrapsProvider } from "./shellIntegration.js";
 
 export type DiagnosticProvider = string;
 export type IntegrationHealth = "not_installed" | "needs_attention" | "ready" | "capturing";
 export type DiagnosticCheckStatus = "passed" | "warning" | "failed";
 
 export interface IntegrationDiagnosticCheck {
-  id: "cli" | "configuration" | "runtime" | "trust" | "synthetic" | "verification" | "recent_event";
+  id: "cli" | "configuration" | "runtime" | "trust" | "synthetic" | "verification" | "recent_event" | "shell_wrapper";
   label: string;
   status: DiagnosticCheckStatus;
   detail: string;
@@ -250,6 +251,8 @@ export interface RunIntegrationDiagnosticOptions {
   runtimeCandidates: string[];
   cwd?: string;
   now?: Date;
+  /** Path to apps/desktop onboarding's generated shell wrapper (~/.config/memora/shell.zsh). */
+  shellWrapperPath?: string;
 }
 
 export async function runIntegrationDiagnostic(options: RunIntegrationDiagnosticOptions): Promise<IntegrationDiagnosticResult> {
@@ -299,6 +302,34 @@ export async function runIntegrationDiagnostic(options: RunIntegrationDiagnostic
     });
   }
   if (!configurationValid) remediation.push("Reinstall this integration from Memora Agent connections.");
+
+  if (options.shellWrapperPath) {
+    let shellWrapperActive = false;
+    try {
+      const wrapperContents = await readFile(options.shellWrapperPath, "utf8");
+      shellWrapperActive = shellIntegrationWrapsProvider(wrapperContents, options.provider);
+    } catch {
+      // Not installed — nothing to check.
+    }
+    if (shellWrapperActive) {
+      // A shell function that routes this provider through `memora local run` on top of
+      // installed hooks doesn't fail either mechanism — it silently records every session
+      // twice (see #36), so this is a warning rather than a failure.
+      const doubleCapture = configurationValid;
+      checks.push({
+        id: "shell_wrapper",
+        label: "Shell wrapper",
+        status: doubleCapture ? "warning" : "passed",
+        detail: doubleCapture
+          ? `A shell function still wraps ${options.provider} with "memora local run", duplicating the installed hooks — every session is captured twice.`
+          : `A shell function wraps ${options.provider} with "memora local run" (installed hooks aren't active, so this is the only capture path).`,
+      });
+      if (doubleCapture) {
+        warnings.push(`${options.provider} sessions are captured twice (shell wrapper + installed hooks).`);
+        remediation.push("Run `memora local uninstall-shell-integration` to remove the duplicate shell wrapper.");
+      }
+    }
+  }
 
   const runtimes = await detectRuntimes(options.provider, options.runtimeCandidates);
   checks.push({
